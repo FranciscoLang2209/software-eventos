@@ -1,0 +1,1 @@
+-- Seed data will be added after the initial schema is validated.
