@@ -1,1 +1,0 @@
--- Validated production schema will be pasted here later.
