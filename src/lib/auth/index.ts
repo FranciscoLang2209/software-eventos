@@ -5,3 +5,4 @@ export {
   type AppRole,
   type CurrentProfile,
 } from "./get-current-profile";
+export { requireAdmin } from "./require-admin";

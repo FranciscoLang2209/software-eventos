@@ -1,0 +1,96 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import {
+  type SalonFormState,
+  validateSalonForm,
+} from "@/lib/salones/validation";
+
+export async function createSalonAction(
+  _previousState: SalonFormState,
+  formData: FormData,
+): Promise<SalonFormState> {
+  await requireAdmin();
+
+  const { state, payload } = validateSalonForm(formData);
+
+  if (!payload) {
+    return state;
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("salones").insert(payload);
+
+  if (error) {
+    return {
+      ...state,
+      formError: "No se pudo crear el salon. Intenta nuevamente.",
+    };
+  }
+
+  revalidatePath("/salones");
+  redirect("/salones?created=1");
+}
+
+export async function updateSalonAction(
+  id: string,
+  _previousState: SalonFormState,
+  formData: FormData,
+): Promise<SalonFormState> {
+  await requireAdmin();
+
+  const { state, payload } = validateSalonForm(formData);
+
+  if (!payload) {
+    return state;
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("salones")
+    .update({
+      ...payload,
+      deleted_at: payload.activo ? null : new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    return {
+      ...state,
+      formError: "No se pudo actualizar el salon. Intenta nuevamente.",
+    };
+  }
+
+  revalidatePath("/salones");
+  revalidatePath(`/salones/${id}/editar`);
+  redirect("/salones?updated=1");
+}
+
+export async function deactivateSalonAction(formData: FormData) {
+  await requireAdmin();
+
+  const id = formData.get("id");
+
+  if (typeof id !== "string" || !id) {
+    redirect("/salones?error=invalid-id");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("salones")
+    .update({
+      activo: false,
+      deleted_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    redirect("/salones?error=deactivate");
+  }
+
+  revalidatePath("/salones");
+  redirect("/salones?deactivated=1");
+}

@@ -700,26 +700,35 @@ export type Database = {
       salones: {
         Row: {
           activo: boolean
+          capacidad: number | null
           created_at: string
+          deleted_at: string | null
+          descripcion: string | null
+          direccion: string | null
           id: string
           nombre: string
-          ubicacion: string | null
           updated_at: string
         }
         Insert: {
           activo?: boolean
+          capacidad?: number | null
           created_at?: string
+          deleted_at?: string | null
+          descripcion?: string | null
+          direccion?: string | null
           id?: string
           nombre: string
-          ubicacion?: string | null
           updated_at?: string
         }
         Update: {
           activo?: boolean
+          capacidad?: number | null
           created_at?: string
+          deleted_at?: string | null
+          descripcion?: string | null
+          direccion?: string | null
           id?: string
           nombre?: string
-          ubicacion?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1056,4 +1065,3 @@ export const Constants = {
     },
   },
 } as const
-
