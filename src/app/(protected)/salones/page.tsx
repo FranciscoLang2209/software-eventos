@@ -16,23 +16,38 @@ type SalonesPageProps = {
 export default async function SalonesPage({
   searchParams,
 }: SalonesPageProps) {
-  const salones = await listSalones();
+  const { profile, salones } = await listSalones();
   const params = searchParams ? await searchParams : {};
   const statusMessage = getStatusMessage(params);
+  const isAdmin = profile.rol === "admin";
 
   return (
     <section className="space-y-6">
       <PageHeader
         eyebrow="Salones"
-        title="Administracion de salones"
-        description="Crea, edita y desactiva los salones disponibles para la operacion de eventos."
+        title={isAdmin ? "Administracion de salones" : "Mis salones"}
+        description={
+          isAdmin
+            ? "Crea, edita, desactiva y asigna salones disponibles para la operacion de eventos."
+            : "Consulta los salones activos asignados a tu usuario vendedor."
+        }
         actions={
-          <Link
-            href="/salones/nuevo"
-            className={buttonVariants({ variant: "primary" })}
-          >
-            Nuevo salon
-          </Link>
+          isAdmin ? (
+            <>
+              <Link
+                href="/salones/asignaciones"
+                className={buttonVariants({ variant: "secondary" })}
+              >
+                Asignaciones
+              </Link>
+              <Link
+                href="/salones/nuevo"
+                className={buttonVariants({ variant: "primary" })}
+              >
+                Nuevo salon
+              </Link>
+            </>
+          ) : null
         }
       />
 
@@ -60,7 +75,7 @@ export default async function SalonesPage({
                 : `${salones.length} salones registrados`}
             </p>
           </div>
-          <Badge variant="primary">Admin</Badge>
+          <Badge variant="primary">{isAdmin ? "Admin" : "Vendedor"}</Badge>
         </CardHeader>
 
         {salones.length > 0 ? (
@@ -80,9 +95,11 @@ export default async function SalonesPage({
                   <th scope="col" className="px-5 py-3">
                     Estado
                   </th>
-                  <th scope="col" className="px-5 py-3 text-right">
-                    Acciones
-                  </th>
+                  {isAdmin ? (
+                    <th scope="col" className="px-5 py-3 text-right">
+                      Acciones
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
@@ -115,24 +132,26 @@ export default async function SalonesPage({
                         {salon.activo ? "Activo" : "Inactivo"}
                       </Badge>
                     </td>
-                    <td className="px-5 py-4 align-top">
-                      <div className="flex justify-end gap-2">
-                        <Link
-                          href={`/salones/${salon.id}/editar`}
-                          className={buttonVariants({
-                            variant: "secondary",
-                            size: "xs",
-                          })}
-                        >
-                          Editar
-                        </Link>
-                        <DeactivateSalonForm
-                          id={salon.id}
-                          disabled={!salon.activo}
-                          action={deactivateSalonAction}
-                        />
-                      </div>
-                    </td>
+                    {isAdmin ? (
+                      <td className="px-5 py-4 align-top">
+                        <div className="flex justify-end gap-2">
+                          <Link
+                            href={`/salones/${salon.id}/editar`}
+                            className={buttonVariants({
+                              variant: "secondary",
+                              size: "xs",
+                            })}
+                          >
+                            Editar
+                          </Link>
+                          <DeactivateSalonForm
+                            id={salon.id}
+                            disabled={!salon.activo}
+                            action={deactivateSalonAction}
+                          />
+                        </div>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -141,14 +160,20 @@ export default async function SalonesPage({
         ) : (
           <EmptyState
             title="No hay salones cargados"
-            description="Crea el primer salon para empezar a administrar unidades de negocio y asociarlas a eventos."
+            description={
+              isAdmin
+                ? "Crea el primer salon para empezar a administrar unidades de negocio y asociarlas a eventos."
+                : "Todavia no tenes salones activos asignados."
+            }
             action={
-              <Link
-                href="/salones/nuevo"
-                className={buttonVariants({ variant: "primary" })}
-              >
-                Nuevo salon
-              </Link>
+              isAdmin ? (
+                <Link
+                  href="/salones/nuevo"
+                  className={buttonVariants({ variant: "primary" })}
+                >
+                  Nuevo salon
+                </Link>
+              ) : null
             }
           />
         )}

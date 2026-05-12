@@ -859,6 +859,10 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: never; Returns: boolean }
+      set_usuario_salon_assignments: {
+        Args: { p_usuario_id: string; p_salon_ids?: string[] }
+        Returns: undefined
+      }
       usuario_tiene_catering_contrato: {
         Args: { p_catering_contrato_id: string }
         Returns: boolean
