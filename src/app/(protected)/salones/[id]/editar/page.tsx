@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
-import { SalonForm } from "@/components/salones/salon-form";
 import { updateSalonAction } from "@/app/(protected)/salones/actions";
+import { SalonForm } from "@/components/salones/salon-form";
+import { PageHeader } from "@/components/ui/page-header";
 import { getSalonById } from "@/lib/salones/queries";
 import type { SalonFormState } from "@/lib/salones/validation";
 
@@ -32,17 +33,11 @@ export default async function EditarSalonPage({
 
   return (
     <section className="space-y-6">
-      <div>
-        <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-          Salones
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-          Editar salon
-        </h1>
-        <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
-          Actualiza los datos administrativos de {salon.nombre}.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Salones"
+        title="Editar salon"
+        description={`Actualiza los datos administrativos de ${salon.nombre}.`}
+      />
 
       <SalonForm
         action={updateSalonAction.bind(null, salon.id)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { SubmitButton } from "@/components/salones/submit-button";
+import { buttonVariants } from "@/components/ui/button";
 
 type DeactivateSalonFormProps = {
   id: string;
@@ -18,7 +19,11 @@ export function DeactivateSalonForm({
       <button
         type="button"
         disabled
-        className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-400"
+        className={buttonVariants({
+          variant: "quiet",
+          size: "xs",
+          className: "text-slate-400",
+        })}
       >
         Desactivado
       </button>
@@ -30,7 +35,11 @@ export function DeactivateSalonForm({
       <input type="hidden" name="id" value={id} />
       <SubmitButton
         pendingLabel="Desactivando..."
-        className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:bg-red-50 disabled:text-red-400"
+        className={buttonVariants({
+          variant: "danger",
+          size: "xs",
+          className: "disabled:bg-red-50 disabled:text-red-400",
+        })}
       >
         Desactivar
       </SubmitButton>
