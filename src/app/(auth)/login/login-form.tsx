@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { FieldError, FormAlert, Input, Label } from "@/components/ui/form";
 import { createClient } from "@/lib/supabase/client";
 
 type LoginFormProps = {
@@ -83,11 +85,11 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   }
 
   return (
-    <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
+    <div className="w-full">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">
         Acceso
       </p>
-      <h1 className="mt-2 text-2xl font-semibold text-slate-950">
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
         Iniciar sesion
       </h1>
       <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -96,13 +98,8 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
 
       <form className="mt-6 space-y-5" noValidate onSubmit={handleSubmit}>
         <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-slate-700"
-          >
-            Email
-          </label>
-          <input
+          <Label htmlFor="email">Email</Label>
+          <Input
             id="email"
             name="email"
             type="email"
@@ -112,23 +109,15 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
             disabled={isLoading}
             aria-invalid={Boolean(fieldErrors.email)}
             aria-describedby={fieldErrors.email ? "email-error" : undefined}
-            className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-950 focus:ring-2 focus:ring-slate-950/10 disabled:cursor-not-allowed disabled:bg-slate-100"
           />
           {fieldErrors.email ? (
-            <p id="email-error" className="mt-2 text-sm text-red-600">
-              {fieldErrors.email}
-            </p>
+            <FieldError id="email-error">{fieldErrors.email}</FieldError>
           ) : null}
         </div>
 
         <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-slate-700"
-          >
-            Contrasena
-          </label>
-          <input
+          <Label htmlFor="password">Contrasena</Label>
+          <Input
             id="password"
             name="password"
             type="password"
@@ -140,31 +129,23 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
             aria-describedby={
               fieldErrors.password ? "password-error" : undefined
             }
-            className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-slate-950 focus:ring-2 focus:ring-slate-950/10 disabled:cursor-not-allowed disabled:bg-slate-100"
           />
           {fieldErrors.password ? (
-            <p id="password-error" className="mt-2 text-sm text-red-600">
+            <FieldError id="password-error">
               {fieldErrors.password}
-            </p>
+            </FieldError>
           ) : null}
         </div>
 
-        {formError ? (
-          <div
-            role="alert"
-            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-          >
-            {formError}
-          </div>
-        ) : null}
+        {formError ? <FormAlert>{formError}</FormAlert> : null}
 
-        <button
+        <Button
           type="submit"
           disabled={isLoading}
-          className="flex w-full items-center justify-center rounded-md bg-slate-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+          className="w-full"
         >
           {isLoading ? "Ingresando..." : "Ingresar"}
-        </button>
+        </Button>
       </form>
     </div>
   );

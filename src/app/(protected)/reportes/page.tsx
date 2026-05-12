@@ -1,16 +1,31 @@
+import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+
 export default function ReportesPage() {
   return (
-    <section className="space-y-4">
-      <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-        Reportes
-      </p>
-      <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-        Reportes financieros
-      </h1>
-      <p className="max-w-3xl text-base leading-7 text-slate-600">
-        Vista futura para reportes de ventas, cobranzas, saldos por salon,
-        deuda pendiente y rendimiento comercial.
-      </p>
+    <section className="space-y-6">
+      <PageHeader
+        eyebrow="Reportes"
+        title="Reportes financieros"
+        description="Vista futura para reportes de ventas, cobranzas, saldos por salon, deuda pendiente y rendimiento comercial."
+      />
+      <Card>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {["Ventas", "Cobranzas", "Saldos", "Rendimiento"].map((item) => (
+              <div
+                key={item}
+                className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3"
+              >
+                <p className="text-sm font-medium text-slate-950">{item}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Pendiente de datos
+                </p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </section>
   );
 }
