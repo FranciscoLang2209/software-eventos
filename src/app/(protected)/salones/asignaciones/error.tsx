@@ -1,0 +1,32 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+
+export default function SalonAssignmentsError({
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <section className="space-y-6">
+      <PageHeader
+        eyebrow="Salones"
+        title="No pudimos cargar las asignaciones"
+        description="La informacion no esta disponible en este momento. Intenta nuevamente."
+      />
+      <Card className="max-w-2xl border-red-200 bg-red-50">
+        <CardContent>
+          <div role="alert" className="text-sm text-red-700">
+            No se pudo cargar la administracion de asignaciones.
+          </div>
+          <Button onClick={reset} className="mt-4">
+            Reintentar
+          </Button>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
