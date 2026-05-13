@@ -1,22 +1,55 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { createEventoAction } from "@/app/(protected)/eventos/actions";
+import { EventoForm } from "@/components/eventos/evento-form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { buttonVariants } from "@/components/ui/button";
+import { emptyEventoFormState } from "@/lib/eventos/validation";
+import { getNuevoEventoPageData } from "@/lib/eventos/queries";
+import Link from "next/link";
 
-export default function NuevoEventoPage() {
+export default async function NuevoEventoPage() {
+  const { assignments, profile, salones, vendedores } =
+    await getNuevoEventoPageData();
+  const isAdmin = profile.rol === "admin";
+  const canCreate = salones.length > 0 && (!isAdmin || vendedores.length > 0);
+
   return (
-    <section className="mx-auto max-w-4xl space-y-6">
+    <section className="space-y-6">
       <PageHeader
         eyebrow="Eventos"
         title="Nuevo evento"
-        description="Formulario reservado para cargar reservas, salon, cliente, catering, vendedor asignado y condiciones de pago."
+        description="Carga el detalle comercial inicial del evento y vincula salon, vendedor responsable y cliente."
       />
-      <Card>
-        <CardContent>
-          <p className="text-sm leading-6 text-slate-600">
-            Esta pantalla queda preparada para un formulario ordenado por
-            cliente, reserva, salon, catering, vendedor y condiciones de pago.
-          </p>
-        </CardContent>
-      </Card>
+
+      {canCreate ? (
+        <EventoForm
+          action={createEventoAction}
+          assignments={assignments}
+          initialState={emptyEventoFormState}
+          isAdmin={isAdmin}
+          salones={salones}
+          vendedores={vendedores}
+        />
+      ) : (
+        <Card className="max-w-3xl">
+          <CardHeader>
+            <CardTitle>No hay datos disponibles para crear eventos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm leading-6 text-slate-600">
+              {salones.length === 0
+                ? "Necesitas al menos un salon activo asignado o disponible antes de cargar eventos."
+                : "Necesitas al menos un vendedor activo para asignar como responsable comercial."}
+            </p>
+            <Link
+              href="/eventos"
+              className={buttonVariants({ variant: "secondary" })}
+            >
+              Volver a eventos
+            </Link>
+          </CardContent>
+        </Card>
+      )}
     </section>
   );
 }
