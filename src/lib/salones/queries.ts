@@ -61,7 +61,7 @@ export async function getSalonAssignmentsPageData() {
         .select("*")
         .eq("rol", "vendedor")
         .eq("activo", true)
-        .order("nombre", { ascending: true }),
+        .order("full_name", { ascending: true }),
       supabase
         .from("salones")
         .select("*")

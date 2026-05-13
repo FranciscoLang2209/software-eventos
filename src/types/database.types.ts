@@ -801,8 +801,8 @@ export type Database = {
           activo: boolean
           created_at: string
           email: string
+          full_name: string
           id: string
-          nombre: string
           rol: Database["public"]["Enums"]["rol_usuario"]
           updated_at: string
         }
@@ -810,8 +810,8 @@ export type Database = {
           activo?: boolean
           created_at?: string
           email: string
+          full_name: string
           id: string
-          nombre: string
           rol?: Database["public"]["Enums"]["rol_usuario"]
           updated_at?: string
         }
@@ -819,8 +819,8 @@ export type Database = {
           activo?: boolean
           created_at?: string
           email?: string
+          full_name?: string
           id?: string
-          nombre?: string
           rol?: Database["public"]["Enums"]["rol_usuario"]
           updated_at?: string
         }

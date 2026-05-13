@@ -2,6 +2,7 @@ import type {
   InputHTMLAttributes,
   LabelHTMLAttributes,
   ReactNode,
+  SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
 import { cn } from "@/utils/cn";
@@ -41,6 +42,21 @@ export function Textarea({
     <textarea
       className={cn(
         "mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-800 focus:ring-2 focus:ring-teal-900/10",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+export function Select({
+  className,
+  ...props
+}: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      className={cn(
+        "mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-800 focus:ring-2 focus:ring-teal-900/10 disabled:cursor-not-allowed disabled:bg-slate-100",
         className,
       )}
       {...props}

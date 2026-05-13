@@ -1,34 +1,214 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { getEventoById } from "@/lib/eventos/queries";
 
 type EventoDetallePageProps = {
   params: Promise<{
     id: string;
   }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function EventoDetallePage({
   params,
+  searchParams,
 }: EventoDetallePageProps) {
   const { id } = await params;
+  const paramsQuery = searchParams ? await searchParams : {};
+  const { evento } = await getEventoById(id);
+  const wasCreated = Boolean(paramsQuery.created);
 
   return (
-    <section className="mx-auto max-w-4xl space-y-6">
+    <section className="space-y-6">
       <PageHeader
         eyebrow="Evento"
-        title="Detalle del evento"
-        description="Vista futura para consultar agenda, salon, pagos, saldo, historial y auditoria del evento."
-        actions={<Badge variant="neutral">Vista reservada</Badge>}
+        title={evento.cliente_nombre}
+        description="Detalle comercial inicial del evento, salon asignado y responsable de venta."
+        actions={
+          <Link
+            href="/eventos"
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            Volver a eventos
+          </Link>
+        }
       />
+
+      {wasCreated ? (
+        <div
+          role="status"
+          className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
+        >
+          Evento creado correctamente.
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <Card>
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>Datos del evento</CardTitle>
+            <Badge variant={getEstadoVariant(evento.estado)}>
+              {getEstadoLabel(evento.estado)}
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <DetailItem label="Salon" value={evento.salones?.nombre} />
+              <DetailItem
+                label="Vendedor"
+                value={evento.usuarios?.full_name ?? evento.usuarios?.email}
+              />
+              <DetailItem
+                label="Fecha del evento"
+                value={formatDate(evento.fecha_evento)}
+              />
+              <DetailItem
+                label="Fecha de contrato"
+                value={formatDate(evento.fecha_contrato)}
+              />
+              <DetailItem label="Tipo de evento" value={evento.tipo_evento} />
+              <DetailItem label="Espacio" value={evento.espacio} />
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Asistentes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <DetailItem label="Adultos" value={formatNumber(evento.pax_adultos)} />
+              <DetailItem label="Jovenes" value={formatNumber(evento.pax_jovenes)} />
+              <DetailItem label="Menores" value={formatNumber(evento.pax_menores)} />
+              <DetailItem label="Bebes" value={formatNumber(evento.pax_bebes)} />
+            </dl>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
+        <CardHeader>
+          <CardTitle>Cliente</CardTitle>
+        </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-500">ID solicitado</p>
-          <p className="mt-2 rounded-md bg-slate-100 px-3 py-2 font-mono text-sm text-slate-950">
-            {id}
-          </p>
+          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <DetailItem label="Nombre" value={evento.cliente_nombre} />
+            <DetailItem
+              label="Razon social"
+              value={evento.cliente_razon_social}
+            />
+            <DetailItem label="CUIT / DNI" value={evento.cliente_cuit_dni} />
+            <DetailItem label="Contacto" value={evento.cliente_contacto} />
+            <DetailItem label="Direccion" value={evento.cliente_direccion} />
+            <DetailItem label="Ciudad" value={evento.cliente_ciudad} />
+            <DetailItem
+              label="Direccion de factura"
+              value={evento.cliente_direccion_factura}
+            />
+          </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Informacion comercial</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <DetailItem
+              label="Organizador externo"
+              value={evento.organizador_externo}
+            />
+            <DetailItem
+              label="Comision organizador"
+              value={formatCurrency(evento.comision_organizador)}
+            />
+            <div className="sm:col-span-2">
+              <DetailItem label="Observaciones" value={evento.observaciones} />
+            </div>
+          </dl>
         </CardContent>
       </Card>
     </section>
   );
+}
+
+function DetailItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | string | null | undefined;
+}) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm font-medium text-slate-950">
+        {value ?? "-"}
+      </dd>
+    </div>
+  );
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function formatCurrency(value: number | null) {
+  if (value === null) {
+    return null;
+  }
+
+  return new Intl.NumberFormat("es-AR", {
+    currency: "ARS",
+    maximumFractionDigits: 2,
+    style: "currency",
+  }).format(value);
+}
+
+function formatNumber(value: number | null) {
+  return value === null ? null : value;
+}
+
+function getEstadoLabel(estado: string) {
+  const labels: Record<string, string> = {
+    borrador: "Borrador",
+    cancelado: "Cancelado",
+    confirmado: "Confirmado",
+    realizado: "Realizado",
+  };
+
+  return labels[estado] ?? estado;
+}
+
+function getEstadoVariant(estado: string) {
+  if (estado === "confirmado" || estado === "realizado") {
+    return "success";
+  }
+
+  if (estado === "cancelado") {
+    return "danger";
+  }
+
+  return "neutral";
 }

@@ -37,7 +37,7 @@ export function SalonAssignmentsForm({
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <CardTitle>{vendedor.nombre}</CardTitle>
+            <CardTitle>{vendedor.full_name}</CardTitle>
             <p className="mt-1 text-sm text-slate-500">{vendedor.email}</p>
           </div>
           <Badge variant="primary">
