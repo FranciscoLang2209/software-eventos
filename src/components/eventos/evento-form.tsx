@@ -16,9 +16,15 @@ import {
   FormAlert,
   Input,
   Label,
-  Select,
   Textarea,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   EventoSalon,
   EventoSalonAssignment,
@@ -32,18 +38,24 @@ type EventoFormProps = {
     formData: FormData,
   ) => Promise<EventoFormState>;
   assignments: EventoSalonAssignment[];
+  cancelHref?: string;
   initialState: EventoFormState;
   isAdmin: boolean;
+  pendingLabel?: string;
   salones: EventoSalon[];
+  submitLabel?: string;
   vendedores: EventoVendedor[];
 };
 
 export function EventoForm({
   action,
   assignments,
+  cancelHref = "/eventos",
   initialState,
   isAdmin,
+  pendingLabel = "Creando...",
   salones,
+  submitLabel = "Crear evento",
   vendedores,
 }: EventoFormProps) {
   const [state, formAction] = useActionState(action, initialState);
@@ -86,25 +98,30 @@ export function EventoForm({
             <div>
               <Label htmlFor="salon_id">Salon</Label>
               <Select
-                id="salon_id"
                 name="salon_id"
                 required
                 value={selectedSalonId}
-                onChange={(event) => {
-                  setSelectedSalonId(event.target.value);
+                onValueChange={(value) => {
+                  setSelectedSalonId(value);
                   setSelectedVendedorId("");
                 }}
-                aria-invalid={Boolean(state.errors.salon_id)}
-                aria-describedby={
-                  state.errors.salon_id ? "salon_id-error" : undefined
-                }
               >
-                <option value="">Seleccionar salon</option>
-                {salones.map((salon) => (
-                  <option key={salon.id} value={salon.id}>
-                    {getSalonOptionLabel(salon)}
-                  </option>
-                ))}
+                <SelectTrigger
+                  id="salon_id"
+                  aria-invalid={Boolean(state.errors.salon_id)}
+                  aria-describedby={
+                    state.errors.salon_id ? "salon_id-error" : undefined
+                  }
+                >
+                  <SelectValue placeholder="Seleccionar salon" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salones.map((salon) => (
+                    <SelectItem key={salon.id} value={salon.id}>
+                      {getSalonOptionLabel(salon)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
               {state.errors.salon_id ? (
                 <FieldError id="salon_id-error">
@@ -117,29 +134,36 @@ export function EventoForm({
               <div>
                 <Label htmlFor="vendedor_id">Vendedor responsable</Label>
                 <Select
-                  id="vendedor_id"
                   name="vendedor_id"
                   required
                   value={selectedVendedorId}
-                  onChange={(event) => setSelectedVendedorId(event.target.value)}
+                  onValueChange={setSelectedVendedorId}
                   disabled={!selectedSalonId}
-                  aria-invalid={Boolean(state.errors.vendedor_id)}
-                  aria-describedby={
-                    state.errors.vendedor_id
-                      ? "vendedor_id-error"
-                      : undefined
-                  }
                 >
-                  <option value="">
-                    {selectedSalonId
-                      ? "Seleccionar vendedor"
-                      : "Primero selecciona un salon"}
-                  </option>
-                  {assignedVendedores.map((vendedor) => (
-                    <option key={vendedor.id} value={vendedor.id}>
-                      {vendedor.full_name} - {vendedor.email}
-                    </option>
-                  ))}
+                  <SelectTrigger
+                    id="vendedor_id"
+                    aria-invalid={Boolean(state.errors.vendedor_id)}
+                    aria-describedby={
+                      state.errors.vendedor_id
+                        ? "vendedor_id-error"
+                        : undefined
+                    }
+                  >
+                    <SelectValue
+                      placeholder={
+                        selectedSalonId
+                          ? "Seleccionar vendedor"
+                          : "Primero selecciona un salon"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assignedVendedores.map((vendedor) => (
+                      <SelectItem key={vendedor.id} value={vendedor.id}>
+                        {vendedor.full_name} - {vendedor.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
                 {state.errors.vendedor_id ? (
                   <FieldError id="vendedor_id-error">
@@ -354,12 +378,12 @@ export function EventoForm({
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <Link
-          href="/eventos"
+          href={cancelHref}
           className={buttonVariants({ variant: "secondary" })}
         >
           Cancelar
         </Link>
-        <SubmitButton pendingLabel="Creando...">Crear evento</SubmitButton>
+        <SubmitButton pendingLabel={pendingLabel}>{submitLabel}</SubmitButton>
       </div>
     </form>
   );

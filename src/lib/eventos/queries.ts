@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, type CurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
 import type { Tables } from "@/types/database.types";
@@ -20,6 +20,58 @@ export type EventoDetalle = Tables<"eventos"> & {
   salones: Pick<Tables<"salones">, "nombre"> | null;
   usuarios: Pick<Tables<"usuarios">, "full_name" | "email"> | null;
 };
+export type EventoListado = Pick<
+  Tables<"eventos">,
+  | "estado"
+  | "fecha_contrato"
+  | "fecha_evento"
+  | "id"
+  | "cliente_nombre"
+  | "salon_id"
+  | "tipo_evento"
+  | "vendedor_id"
+> & {
+  salones: Pick<Tables<"salones">, "nombre"> | null;
+  usuarios: Pick<Tables<"usuarios">, "full_name" | "email"> | null;
+};
+
+export async function listEventos() {
+  const profile = await getActiveProfile();
+  const supabase = await createClient();
+  const query = supabase
+    .from("eventos")
+    .select(
+      "id, cliente_nombre, estado, fecha_evento, fecha_contrato, tipo_evento, salon_id, vendedor_id, salones(nombre), usuarios(full_name, email)",
+    )
+    .is("deleted_at", null)
+    .order("fecha_evento", { ascending: true });
+
+  if (profile.rol === "vendedor") {
+    const salones = await getAssignedActiveSalones(profile.id);
+    const salonIds = salones.map((salon) => salon.id);
+
+    if (salonIds.length === 0) {
+      return {
+        eventos: [],
+        profile,
+      };
+    }
+
+    query.in("salon_id", salonIds);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    logSupabaseError("listEventos eventos", error);
+    throw new Error("No se pudo obtener el listado de eventos.");
+  }
+
+  return {
+    eventos: data as EventoListado[],
+    profile,
+  };
+}
 
 export async function getNuevoEventoPageData() {
   const profile = await getActiveProfile();
@@ -81,30 +133,87 @@ export async function getNuevoEventoPageData() {
 export async function getEventoById(id: string) {
   const profile = await getActiveProfile();
   const supabase = await createClient();
-  const query = supabase
+  const { data, error } = await supabase
     .from("eventos")
     .select("*, salones(nombre), usuarios(full_name, email)")
     .eq("id", id)
-    .is("deleted_at", null);
-
-  if (profile.rol === "vendedor") {
-    query.eq("vendedor_id", profile.id);
-  }
-
-  const { data, error } = await query.maybeSingle();
+    .is("deleted_at", null)
+    .maybeSingle();
 
   if (error) {
     logSupabaseError("getEventoById evento", error);
     throw new Error("No se pudo obtener el evento.");
   }
 
-  if (!data) {
+  if (!data || !(await canAccessEvento(profile, data.salon_id))) {
     notFound();
   }
 
   return {
     profile,
     evento: data as EventoDetalle,
+  };
+}
+
+export async function getEditarEventoPageData(id: string) {
+  const { evento, profile } = await getEventoById(id);
+  const supabase = await createClient();
+
+  if (profile.rol === "admin") {
+    const [salonesResult, vendedoresResult] = await Promise.all([
+      supabase
+        .from("salones")
+        .select("id, nombre, direccion, capacidad")
+        .eq("activo", true)
+        .is("deleted_at", null)
+        .order("nombre", { ascending: true }),
+      supabase
+        .from("usuarios")
+        .select("id, full_name, email")
+        .eq("rol", "vendedor")
+        .eq("activo", true)
+        .order("full_name", { ascending: true }),
+    ]);
+
+    if (salonesResult.error) {
+      logSupabaseError(
+        "getEditarEventoPageData admin salones",
+        salonesResult.error,
+      );
+      throw new Error("No se pudo obtener el listado de salones.");
+    }
+
+    if (vendedoresResult.error) {
+      logSupabaseError(
+        "getEditarEventoPageData admin vendedores",
+        vendedoresResult.error,
+      );
+      throw new Error("No se pudo obtener el listado de vendedores.");
+    }
+
+    return {
+      assignments: [],
+      evento,
+      profile,
+      salones: salonesResult.data,
+      vendedores: vendedoresResult.data,
+    };
+  }
+
+  const salones = await getAssignedActiveSalones(profile.id);
+
+  return {
+    assignments: [],
+    evento,
+    profile,
+    salones,
+    vendedores: [
+      {
+        id: profile.id,
+        full_name: profile.full_name,
+        email: profile.email,
+      },
+    ],
   };
 }
 
@@ -150,4 +259,25 @@ async function getActiveProfile() {
   }
 
   return profile;
+}
+
+async function canAccessEvento(profile: CurrentProfile, salonId: string) {
+  if (profile.rol === "admin") {
+    return true;
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("usuario_salon")
+    .select("usuario_id")
+    .eq("usuario_id", profile.id)
+    .eq("salon_id", salonId)
+    .maybeSingle();
+
+  if (error) {
+    logSupabaseError("canAccessEvento validar asignacion", error);
+    throw new Error("No se pudo validar el acceso al evento.");
+  }
+
+  return Boolean(data);
 }

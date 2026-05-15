@@ -25,6 +25,7 @@ export default async function EventoDetallePage({
   const paramsQuery = searchParams ? await searchParams : {};
   const { evento } = await getEventoById(id);
   const wasCreated = Boolean(paramsQuery.created);
+  const wasUpdated = Boolean(paramsQuery.updated);
 
   return (
     <section className="space-y-6">
@@ -33,21 +34,31 @@ export default async function EventoDetallePage({
         title={evento.cliente_nombre}
         description="Detalle comercial inicial del evento, salon asignado y responsable de venta."
         actions={
-          <Link
-            href="/eventos"
-            className={buttonVariants({ variant: "secondary" })}
-          >
-            Volver a eventos
-          </Link>
+          <>
+            <Link
+              href={`/eventos/${evento.id}/editar`}
+              className={buttonVariants({ variant: "primary" })}
+            >
+              Editar
+            </Link>
+            <Link
+              href="/eventos"
+              className={buttonVariants({ variant: "secondary" })}
+            >
+              Volver a eventos
+            </Link>
+          </>
         }
       />
 
-      {wasCreated ? (
+      {wasCreated || wasUpdated ? (
         <div
           role="status"
           className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
         >
-          Evento creado correctamente.
+          {wasUpdated
+            ? "Evento actualizado correctamente."
+            : "Evento creado correctamente."}
         </div>
       ) : null}
 

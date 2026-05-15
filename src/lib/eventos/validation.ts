@@ -1,4 +1,4 @@
-import type { TablesInsert } from "@/types/database.types";
+import type { Tables, TablesInsert } from "@/types/database.types";
 
 export type EventoFormFields = {
   salon_id: string;
@@ -64,6 +64,37 @@ export const emptyEventoFormState: EventoFormState = {
   errors: {},
   formError: null,
 };
+
+export function getEventoFormStateFromEvento(
+  evento: Tables<"eventos">,
+): EventoFormState {
+  return {
+    fields: {
+      salon_id: evento.salon_id,
+      vendedor_id: evento.vendedor_id,
+      cliente_nombre: evento.cliente_nombre,
+      cliente_razon_social: evento.cliente_razon_social ?? "",
+      cliente_cuit_dni: evento.cliente_cuit_dni ?? "",
+      cliente_direccion: evento.cliente_direccion ?? "",
+      cliente_ciudad: evento.cliente_ciudad ?? "",
+      cliente_direccion_factura: evento.cliente_direccion_factura ?? "",
+      cliente_contacto: evento.cliente_contacto ?? "",
+      fecha_evento: evento.fecha_evento,
+      fecha_contrato: evento.fecha_contrato ?? "",
+      tipo_evento: evento.tipo_evento ?? "",
+      espacio: evento.espacio ?? "",
+      pax_adultos: evento.pax_adultos?.toString() ?? "",
+      pax_jovenes: evento.pax_jovenes?.toString() ?? "",
+      pax_menores: evento.pax_menores?.toString() ?? "",
+      pax_bebes: evento.pax_bebes?.toString() ?? "",
+      organizador_externo: evento.organizador_externo ?? "",
+      comision_organizador: evento.comision_organizador?.toString() ?? "",
+      observaciones: evento.observaciones ?? "",
+    },
+    errors: {},
+    formError: null,
+  };
+}
 
 export function validateEventoForm(formData: FormData): {
   state: EventoFormState;
