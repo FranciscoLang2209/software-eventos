@@ -31,7 +31,10 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         {metrics.map((metric) => (
-          <Card key={metric.label}>
+          <Card
+            key={metric.label}
+            className="transition hover:border-teal-100 hover:shadow-md hover:shadow-teal-950/5"
+          >
             <CardContent>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-medium text-slate-500">
@@ -50,12 +53,12 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Actividad reciente</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-12 text-center">
             <p className="text-sm font-medium text-slate-700">
               La actividad se mostrara cuando los modulos operativos registren
               movimientos.

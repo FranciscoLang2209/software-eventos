@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -52,14 +53,15 @@ export default async function EventoDetallePage({
       />
 
       {wasCreated || wasUpdated ? (
-        <div
+        <Alert
           role="status"
-          className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700"
+          variant="success"
+          className="font-medium"
         >
           {wasUpdated
             ? "Evento actualizado correctamente."
             : "Evento creado correctamente."}
-        </div>
+        </Alert>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
@@ -161,7 +163,7 @@ function DetailItem({
   value: number | string | null | undefined;
 }) {
   return (
-    <div>
+    <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
       <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
         {label}
       </dt>

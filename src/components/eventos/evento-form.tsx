@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 import { SubmitButton } from "@/components/salones/submit-button";
+import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -171,9 +172,9 @@ export function EventoForm({
                   </FieldError>
                 ) : null}
                 {selectedSalonId && assignedVendedores.length === 0 ? (
-                  <p className="mt-2 text-sm text-amber-700">
+                  <Alert variant="warning" className="mt-2 px-3 py-2">
                     Este salon no tiene vendedores asignados.
-                  </p>
+                  </Alert>
                 ) : null}
               </div>
             ) : null}

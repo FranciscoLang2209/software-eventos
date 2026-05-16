@@ -5,6 +5,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
+import { Alert } from "@/components/ui/alert";
 import { cn } from "@/utils/cn";
 
 export function Label({
@@ -13,7 +14,10 @@ export function Label({
 }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
-      className={cn("block text-sm font-medium text-slate-700", className)}
+      className={cn(
+        "block text-sm font-medium leading-none text-slate-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+        className,
+      )}
       {...props}
     />
   );
@@ -26,7 +30,7 @@ export function Input({
   return (
     <input
       className={cn(
-        "mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-800 focus:ring-2 focus:ring-teal-900/10 disabled:cursor-not-allowed disabled:bg-slate-100",
+        "mt-2 block min-h-10 w-full rounded-lg border border-input bg-white px-3.5 py-2.5 text-sm text-slate-950 shadow-sm shadow-slate-950/5 outline-none transition placeholder:text-slate-400 focus:border-ring focus:ring-2 focus:ring-ring/10 disabled:cursor-not-allowed disabled:bg-slate-50 aria-invalid:border-red-300 aria-invalid:focus:ring-red-900/10",
         className,
       )}
       {...props}
@@ -41,7 +45,7 @@ export function Textarea({
   return (
     <textarea
       className={cn(
-        "mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-teal-800 focus:ring-2 focus:ring-teal-900/10",
+        "mt-2 block w-full rounded-lg border border-input bg-white px-3.5 py-2.5 text-sm text-slate-950 shadow-sm shadow-slate-950/5 outline-none transition placeholder:text-slate-400 focus:border-ring focus:ring-2 focus:ring-ring/10 disabled:cursor-not-allowed disabled:bg-slate-50 aria-invalid:border-red-300 aria-invalid:focus:ring-red-900/10",
         className,
       )}
       {...props}
@@ -56,7 +60,7 @@ export function Select({
   return (
     <select
       className={cn(
-        "mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-950 shadow-sm outline-none transition focus:border-teal-800 focus:ring-2 focus:ring-teal-900/10 disabled:cursor-not-allowed disabled:bg-slate-100",
+        "mt-2 block min-h-10 w-full rounded-lg border border-input bg-white px-3.5 py-2.5 text-sm text-slate-950 shadow-sm shadow-slate-950/5 outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/10 disabled:cursor-not-allowed disabled:bg-slate-50 aria-invalid:border-red-300 aria-invalid:focus:ring-red-900/10",
         className,
       )}
       {...props}
@@ -83,20 +87,16 @@ type FormAlertProps = {
 };
 
 export function FormAlert({ children, variant = "error" }: FormAlertProps) {
-  const className =
-    variant === "success"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-      : "border-red-200 bg-red-50 text-red-700";
-
   return (
-    <div
-      role="alert"
-      className={cn("rounded-md border px-3 py-2 text-sm", className)}
+    <Alert
+      role={variant === "success" ? "status" : "alert"}
+      variant={variant === "success" ? "success" : "destructive"}
+      className="px-3 py-2"
     >
       {children}
-    </div>
+    </Alert>
   );
 }
 
 export const checkboxClassName =
-  "h-4 w-4 rounded border-slate-300 text-teal-900 focus:ring-teal-900";
+  "h-4 w-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/20";

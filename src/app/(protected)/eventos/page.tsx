@@ -4,6 +4,14 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { listEventos } from "@/lib/eventos/queries";
 
 export default async function EventosPage() {
@@ -40,79 +48,65 @@ export default async function EventosPage() {
         </CardHeader>
 
         {eventos.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                <tr>
-                  <th scope="col" className="px-5 py-3">
-                    Fecha
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Cliente
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Salon
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Tipo
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Estado
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Vendedor
-                  </th>
-                  <th scope="col" className="px-5 py-3 text-right">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
-                {eventos.map((evento) => (
-                  <tr key={evento.id} className="transition hover:bg-slate-50/70">
-                    <td className="whitespace-nowrap px-5 py-4 align-top text-slate-600">
-                      {formatDate(evento.fecha_evento)}
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <p className="font-medium text-slate-950">
-                        {evento.cliente_nombre}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        Contrato: {formatDate(evento.fecha_contrato) ?? "-"}
-                      </p>
-                    </td>
-                    <td className="px-5 py-4 align-top text-slate-600">
-                      {evento.salones?.nombre ?? "-"}
-                    </td>
-                    <td className="px-5 py-4 align-top text-slate-600">
-                      {evento.tipo_evento ?? "-"}
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <Badge variant={getEstadoVariant(evento.estado)}>
-                        {getEstadoLabel(evento.estado)}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-4 align-top text-slate-600">
-                      {evento.usuarios?.full_name ?? evento.usuarios?.email ?? "-"}
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <div className="flex justify-end">
-                        <Link
-                          href={`/eventos/${evento.id}`}
-                          className={buttonVariants({
-                            variant: "secondary",
-                            size: "xs",
-                          })}
-                        >
-                          Ver
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead scope="col">Fecha</TableHead>
+                <TableHead scope="col">Cliente</TableHead>
+                <TableHead scope="col">Salon</TableHead>
+                <TableHead scope="col">Tipo</TableHead>
+                <TableHead scope="col">Estado</TableHead>
+                <TableHead scope="col">Vendedor</TableHead>
+                <TableHead scope="col" className="text-right">
+                  Acciones
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {eventos.map((evento) => (
+                <TableRow key={evento.id}>
+                  <TableCell className="whitespace-nowrap text-slate-600">
+                    {formatDate(evento.fecha_evento)}
+                  </TableCell>
+                  <TableCell>
+                    <p className="font-medium text-slate-950">
+                      {evento.cliente_nombre}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Contrato: {formatDate(evento.fecha_contrato) ?? "-"}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-slate-600">
+                    {evento.salones?.nombre ?? "-"}
+                  </TableCell>
+                  <TableCell className="text-slate-600">
+                    {evento.tipo_evento ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getEstadoVariant(evento.estado)}>
+                      {getEstadoLabel(evento.estado)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-slate-600">
+                    {evento.usuarios?.full_name ?? evento.usuarios?.email ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end">
+                      <Link
+                        href={`/eventos/${evento.id}`}
+                        className={buttonVariants({
+                          variant: "secondary",
+                          size: "xs",
+                        })}
+                      >
+                        Ver
+                      </Link>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : (
           <EmptyState
             title="No hay eventos cargados"

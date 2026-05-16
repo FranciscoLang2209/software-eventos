@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { SubmitButton } from "@/components/salones/submit-button";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   checkboxClassName,
   FieldError,
@@ -38,10 +44,10 @@ export function SalonForm({
       <Card>
         <CardHeader>
           <CardTitle>Datos del salon</CardTitle>
-          <p className="mt-1 text-sm text-slate-500">
+          <CardDescription>
             Estos datos se usan para identificar la unidad operativa y su
             disponibilidad comercial.
-          </p>
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-5 sm:grid-cols-2">
@@ -104,7 +110,7 @@ export function SalonForm({
               />
             </div>
 
-            <label className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700">
+            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-3 text-sm font-medium text-slate-700 transition-colors hover:border-teal-100 hover:bg-teal-50/50">
               <input
                 name="activo"
                 type="checkbox"

@@ -15,7 +15,7 @@ export default function ReportesPage() {
             {["Ventas", "Cobranzas", "Saldos", "Rendimiento"].map((item) => (
               <div
                 key={item}
-                className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3"
+                className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 transition hover:border-teal-100 hover:bg-teal-50/50"
               >
                 <p className="text-sm font-medium text-slate-950">{item}</p>
                 <p className="mt-1 text-xs text-slate-500">

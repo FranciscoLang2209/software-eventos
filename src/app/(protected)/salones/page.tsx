@@ -1,13 +1,21 @@
 import Link from "next/link";
 import { deactivateSalonAction } from "@/app/(protected)/salones/actions";
 import { DeactivateSalonForm } from "@/components/salones/deactivate-salon-form";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { listSalones } from "@/lib/salones/queries";
-import { cn } from "@/utils/cn";
 
 type SalonesPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -52,17 +60,13 @@ export default async function SalonesPage({
       />
 
       {statusMessage ? (
-        <div
+        <Alert
           role="status"
-          className={cn(
-            "rounded-md border px-4 py-3 text-sm font-medium",
-            statusMessage.kind === "error"
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-emerald-200 bg-emerald-50 text-emerald-700",
-          )}
+          variant={statusMessage.kind === "error" ? "destructive" : "success"}
+          className="font-medium"
         >
           {statusMessage.text}
-        </div>
+        </Alert>
       ) : null}
 
       <Card className="overflow-hidden">
@@ -79,84 +83,74 @@ export default async function SalonesPage({
         </CardHeader>
 
         {salones.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                <tr>
-                  <th scope="col" className="px-5 py-3">
-                    Nombre
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Direccion
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Capacidad
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Estado
-                  </th>
-                  {isAdmin ? (
-                    <th scope="col" className="px-5 py-3 text-right">
-                      Acciones
-                    </th>
-                  ) : null}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
-                {salones.map((salon) => (
-                  <tr key={salon.id} className="transition hover:bg-slate-50/70">
-                    <td className="px-5 py-4 align-top">
-                      <p className="font-medium text-slate-950">
-                        {salon.nombre}
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead scope="col">Nombre</TableHead>
+                <TableHead scope="col">Direccion</TableHead>
+                <TableHead scope="col">Capacidad</TableHead>
+                <TableHead scope="col">Estado</TableHead>
+                {isAdmin ? (
+                  <TableHead scope="col" className="text-right">
+                    Acciones
+                  </TableHead>
+                ) : null}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {salones.map((salon) => (
+                <TableRow key={salon.id}>
+                  <TableCell>
+                    <p className="font-medium text-slate-950">
+                      {salon.nombre}
+                    </p>
+                    {salon.descripcion ? (
+                      <p className="mt-1 max-w-md text-sm leading-6 text-slate-500">
+                        {salon.descripcion}
                       </p>
-                      {salon.descripcion ? (
-                        <p className="mt-1 max-w-md text-sm leading-6 text-slate-500">
-                          {salon.descripcion}
-                        </p>
-                      ) : (
-                        <p className="mt-1 text-sm text-slate-400">
-                          Sin descripcion
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 align-top text-slate-600">
-                      {salon.direccion ?? "-"}
-                    </td>
-                    <td className="px-5 py-4 align-top text-slate-600">
-                      {salon.capacidad !== null
-                        ? `${salon.capacidad} personas`
-                        : "-"}
-                    </td>
-                    <td className="px-5 py-4 align-top">
-                      <Badge variant={salon.activo ? "success" : "inactive"}>
-                        {salon.activo ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </td>
-                    {isAdmin ? (
-                      <td className="px-5 py-4 align-top">
-                        <div className="flex justify-end gap-2">
-                          <Link
-                            href={`/salones/${salon.id}/editar`}
-                            className={buttonVariants({
-                              variant: "secondary",
-                              size: "xs",
-                            })}
-                          >
-                            Editar
-                          </Link>
-                          <DeactivateSalonForm
-                            id={salon.id}
-                            disabled={!salon.activo}
-                            action={deactivateSalonAction}
-                          />
-                        </div>
-                      </td>
-                    ) : null}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    ) : (
+                      <p className="mt-1 text-sm text-slate-400">
+                        Sin descripcion
+                      </p>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-slate-600">
+                    {salon.direccion ?? "-"}
+                  </TableCell>
+                  <TableCell className="text-slate-600">
+                    {salon.capacidad !== null
+                      ? `${salon.capacidad} personas`
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={salon.activo ? "success" : "inactive"}>
+                      {salon.activo ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </TableCell>
+                  {isAdmin ? (
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Link
+                          href={`/salones/${salon.id}/editar`}
+                          className={buttonVariants({
+                            variant: "secondary",
+                            size: "xs",
+                          })}
+                        >
+                          Editar
+                        </Link>
+                        <DeactivateSalonForm
+                          id={salon.id}
+                          disabled={!salon.activo}
+                          action={deactivateSalonAction}
+                        />
+                      </div>
+                    </TableCell>
+                  ) : null}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : (
           <EmptyState
             title="No hay salones cargados"
