@@ -16,6 +16,13 @@ type EditableEvento = Pick<
   "id" | "salon_id" | "vendedor_id"
 >;
 
+export type DeleteEventoState = {
+  formError?: string;
+};
+
+const DELETE_EVENTO_ERROR =
+  "No se pudo eliminar el evento. Verifica los datos e intenta nuevamente.";
+
 export async function createEventoAction(
   _previousState: EventoFormState,
   formData: FormData,
@@ -209,6 +216,70 @@ export async function updateEventoAction(
   revalidatePath(`/eventos/${id}`);
   revalidatePath(`/eventos/${id}/editar`);
   redirect(`/eventos/${id}?updated=1`);
+}
+
+export async function deleteEventoAction(
+  id: string,
+  previousState: DeleteEventoState,
+  formData: FormData,
+): Promise<DeleteEventoState> {
+  void previousState;
+  void formData;
+
+  const profile = await getCurrentProfile();
+
+  if (!profile?.activo) {
+    redirect("/dashboard");
+  }
+
+  const currentEvento = await getEditableEventoById(id);
+
+  if (!currentEvento) {
+    return {
+      formError: DELETE_EVENTO_ERROR,
+    };
+  }
+
+  if (profile.rol === "vendedor") {
+    const canDeleteCurrentSalon = await usuarioTieneSalon(
+      profile.id,
+      currentEvento.salon_id,
+    );
+
+    if (!canDeleteCurrentSalon) {
+      return {
+        formError: DELETE_EVENTO_ERROR,
+      };
+    }
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("eventos")
+    .update({
+      deleted_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("deleted_at", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    logSupabaseError("deleteEventoAction eliminar evento", error);
+    return {
+      formError: "No se pudo eliminar el evento. Intenta nuevamente.",
+    };
+  }
+
+  if (!data) {
+    return {
+      formError: DELETE_EVENTO_ERROR,
+    };
+  }
+
+  revalidatePath("/eventos");
+  revalidatePath(`/eventos/${id}`);
+  redirect("/eventos?deleted=1");
 }
 
 async function validateEventoAccess({

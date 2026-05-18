@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { deactivateSalonAction } from "@/app/(protected)/salones/actions";
+import { updateSalonStatusAction } from "@/app/(protected)/salones/actions";
 import { DeactivateSalonForm } from "@/components/salones/deactivate-salon-form";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +36,7 @@ export default async function SalonesPage({
         title={isAdmin ? "Administracion de salones" : "Mis salones"}
         description={
           isAdmin
-            ? "Crea, edita, desactiva y asigna salones disponibles para la operacion de eventos."
+            ? "Crea, edita, activa, desactiva y asigna salones disponibles para la operacion de eventos."
             : "Consulta los salones activos asignados a tu usuario vendedor."
         }
         actions={
@@ -141,8 +141,8 @@ export default async function SalonesPage({
                         </Link>
                         <DeactivateSalonForm
                           id={salon.id}
-                          disabled={!salon.activo}
-                          action={deactivateSalonAction}
+                          active={salon.activo}
+                          action={updateSalonStatusAction}
                         />
                       </div>
                     </TableCell>
@@ -189,6 +189,10 @@ function getStatusMessage(
 
   if (params.deactivated) {
     return { kind: "success", text: "Salon desactivado correctamente." };
+  }
+
+  if (params.activated) {
+    return { kind: "success", text: "Salon activado correctamente." };
   }
 
   if (params.error) {

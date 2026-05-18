@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,9 +15,15 @@ import {
 } from "@/components/ui/table";
 import { listEventos } from "@/lib/eventos/queries";
 
-export default async function EventosPage() {
+type EventosPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function EventosPage({ searchParams }: EventosPageProps) {
   const { eventos, profile } = await listEventos();
+  const params = searchParams ? await searchParams : {};
   const isAdmin = profile.rol === "admin";
+  const wasDeleted = Boolean(params.deleted);
 
   return (
     <section className="space-y-6">
@@ -33,6 +40,16 @@ export default async function EventosPage() {
           </Link>
         }
       />
+
+      {wasDeleted ? (
+        <Alert
+          role="status"
+          variant="success"
+          className="font-medium"
+        >
+          Evento eliminado correctamente.
+        </Alert>
+      ) : null}
 
       <Card className="overflow-hidden">
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

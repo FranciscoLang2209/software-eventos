@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { deleteEventoAction } from "@/app/(protected)/eventos/actions";
+import { DeleteEventoForm } from "@/components/eventos/delete-evento-form";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -42,6 +44,9 @@ export default async function EventoDetallePage({
             >
               Editar
             </Link>
+            <DeleteEventoForm
+              action={deleteEventoAction.bind(null, evento.id)}
+            />
             <Link
               href="/eventos"
               className={buttonVariants({ variant: "secondary" })}
