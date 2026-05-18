@@ -1,0 +1,173 @@
+import { createClient } from "@/lib/supabase/server";
+import { logSupabaseError } from "@/lib/supabase/errors";
+import type { Enums, Tables } from "@/types/database.types";
+
+export type ServicioCatalogoOption = Pick<
+  Tables<"servicios_catalogo">,
+  "activo" | "categoria" | "descripcion" | "id" | "nombre"
+>;
+
+export type EventoServicioItem = Pick<
+  Tables<"evento_servicios">,
+  | "adicionales_monto"
+  | "created_at"
+  | "evento_id"
+  | "id"
+  | "iva_porcentaje"
+  | "notas"
+  | "precio_base"
+  | "proveedor"
+  | "servicio_id"
+  | "total_con_iva"
+  | "total_sin_iva"
+> & {
+  saldo_pendiente: number;
+  servicios_catalogo: Pick<
+    Tables<"servicios_catalogo">,
+    "categoria" | "descripcion" | "nombre"
+  > | null;
+  total_pagado: number;
+};
+
+export type EventoServicioPagoOption = {
+  id: string;
+  label: string;
+  saldoPendiente: number;
+};
+
+type PagoServicioRow = Pick<
+  Tables<"pagos">,
+  "evento_servicio_id" | "importe_en_pesos" | "importe_moneda_original"
+>;
+
+type EventoServicioRow = Omit<
+  EventoServicioItem,
+  "saldo_pendiente" | "servicios_catalogo" | "total_pagado"
+> & {
+  saldo_pendiente: number | null;
+  servicios_catalogo: Pick<
+    Tables<"servicios_catalogo">,
+    "categoria" | "descripcion" | "nombre"
+  > | null;
+  total_pagado: number | null;
+};
+
+export async function getEventoValores(eventoId: string) {
+  const supabase = await createClient();
+  const [catalogoResult, serviciosResult, pagosResult] = await Promise.all([
+    supabase
+      .from("servicios_catalogo")
+      .select("id, nombre, categoria, descripcion, activo")
+      .eq("activo", true)
+      .order("categoria", { ascending: true })
+      .order("nombre", { ascending: true }),
+    supabase
+      .from("evento_servicios")
+      .select(
+        "id, evento_id, servicio_id, precio_base, adicionales_monto, iva_porcentaje, total_sin_iva, total_con_iva, proveedor, total_pagado, saldo_pendiente, notas, created_at, servicios_catalogo(nombre, categoria, descripcion)",
+      )
+      .eq("evento_id", eventoId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("pagos")
+      .select("evento_servicio_id, importe_en_pesos, importe_moneda_original")
+      .eq("evento_id", eventoId)
+      .is("deleted_at", null)
+      .not("evento_servicio_id", "is", null),
+  ]);
+
+  if (catalogoResult.error) {
+    logSupabaseError("getEventoValores catalogo", catalogoResult.error);
+    throw new Error("No se pudo obtener el catalogo de servicios.");
+  }
+
+  if (serviciosResult.error) {
+    logSupabaseError("getEventoValores servicios", serviciosResult.error);
+    throw new Error("No se pudieron obtener los valores del evento.");
+  }
+
+  if (pagosResult.error) {
+    logSupabaseError("getEventoValores pagos", pagosResult.error);
+    throw new Error("No se pudieron obtener los pagos asociados a servicios.");
+  }
+
+  const pagosPorServicio = getPagosPorServicio(pagosResult.data as PagoServicioRow[]);
+  const servicios = (serviciosResult.data as EventoServicioRow[]).map(
+    (servicio) => {
+      const totalConIva = toMoneyNumber(servicio.total_con_iva);
+      const totalPagado = pagosPorServicio.get(servicio.id) ?? 0;
+
+      return {
+        ...servicio,
+        saldo_pendiente: roundMoney(totalConIva - totalPagado),
+        total_pagado: totalPagado,
+      };
+    },
+  );
+
+  return {
+    catalogo: catalogoResult.data as ServicioCatalogoOption[],
+    opcionesPago: getOpcionesPago(servicios),
+    servicios,
+    totalEvento: roundMoney(
+      servicios.reduce(
+        (total, servicio) => total + toMoneyNumber(servicio.total_con_iva),
+        0,
+      ),
+    ),
+  };
+}
+
+export function getCategoriaServicioLabel(value: Enums<"categoria_servicio">) {
+  const labels: Record<Enums<"categoria_servicio">, string> = {
+    ambientacion: "Ambientacion",
+    catering: "Catering",
+    dj: "DJ",
+    estacionamiento: "Estacionamiento",
+    fotografo: "Fotografo",
+    garantia: "Garantia",
+    sadaic: "SADAIC",
+    salon: "Salon",
+    sillas_tiffany: "Sillas Tiffany",
+    varios: "Varios",
+  };
+
+  return labels[value] ?? value;
+}
+
+function getPagosPorServicio(pagos: PagoServicioRow[]) {
+  const pagosPorServicio = new Map<string, number>();
+
+  for (const pago of pagos) {
+    if (!pago.evento_servicio_id) {
+      continue;
+    }
+
+    const monto = toMoneyNumber(
+      pago.importe_en_pesos ?? pago.importe_moneda_original,
+    );
+    const current = pagosPorServicio.get(pago.evento_servicio_id) ?? 0;
+
+    pagosPorServicio.set(pago.evento_servicio_id, roundMoney(current + monto));
+  }
+
+  return pagosPorServicio;
+}
+
+function getOpcionesPago(
+  servicios: EventoServicioItem[],
+): EventoServicioPagoOption[] {
+  return servicios.map((servicio) => ({
+    id: servicio.id,
+    label: servicio.servicios_catalogo?.nombre ?? "Servicio sin nombre",
+    saldoPendiente: servicio.saldo_pendiente,
+  }));
+}
+
+function toMoneyNumber(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}

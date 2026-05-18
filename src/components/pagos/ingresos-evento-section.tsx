@@ -1,0 +1,199 @@
+import { createPagoAction, deletePagoAction } from "@/app/(protected)/pagos/actions";
+import { DeletePagoForm } from "@/components/pagos/delete-pago-form";
+import { PagoForm } from "@/components/pagos/pago-form";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { getEmptyPagoFormState } from "@/lib/pagos/validation";
+import type { EventoIngresos, EstadoCobro } from "@/lib/pagos/queries";
+import type { EventoServicioPagoOption } from "@/lib/evento-servicios/queries";
+
+type IngresosEventoSectionProps = {
+  eventoId: string;
+  ingresos: EventoIngresos;
+  servicios: EventoServicioPagoOption[];
+};
+
+export function IngresosEventoSection({
+  eventoId,
+  ingresos,
+  servicios,
+}: IngresosEventoSectionProps) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <CardTitle>Ingresos</CardTitle>
+          <CardDescription>
+            Cobros registrados para este evento y saldo pendiente.
+          </CardDescription>
+        </div>
+        <Badge variant={getEstadoCobroVariant(ingresos.estadoCobro)}>
+          {getEstadoCobroLabel(ingresos.estadoCobro)}
+        </Badge>
+      </CardHeader>
+      <CardContent className="space-y-8">
+        <dl className="grid gap-4 md:grid-cols-3">
+          <SummaryItem
+            label="Total evento"
+            value={formatCurrency(ingresos.totalEvento)}
+          />
+          <SummaryItem
+            label="Total cobrado"
+            value={formatCurrency(ingresos.totalCobrado)}
+          />
+          <SummaryItem
+            label="Saldo pendiente"
+            value={formatCurrency(ingresos.saldoPendiente)}
+          />
+        </dl>
+
+        <div className="rounded-lg border border-slate-100">
+          {ingresos.pagos.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Concepto</TableHead>
+                  <TableHead>Servicio</TableHead>
+                  <TableHead>Forma</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead>Notas</TableHead>
+                  <TableHead className="text-right">Accion</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ingresos.pagos.map((pago) => (
+                  <TableRow key={pago.id}>
+                    <TableCell>{formatDate(pago.fecha_pago)}</TableCell>
+                    <TableCell className="font-medium text-slate-950">
+                      {pago.concepto ?? "-"}
+                    </TableCell>
+                    <TableCell>
+                      {pago.evento_servicios?.servicios_catalogo?.nombre ??
+                        "-"}
+                    </TableCell>
+                    <TableCell>{getFormaPagoLabel(pago.forma_pago)}</TableCell>
+                    <TableCell className="text-right font-medium text-slate-950">
+                      {formatCurrency(
+                        pago.importe_en_pesos ??
+                          pago.importe_moneda_original,
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-xs text-slate-500">
+                      {pago.notas ?? "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DeletePagoForm
+                        action={deletePagoAction.bind(
+                          null,
+                          eventoId,
+                          pago.id,
+                        )}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <EmptyState
+              title="No hay pagos registrados"
+              description="Registra el primer cobro para empezar a seguir el saldo del evento."
+            />
+          )}
+        </div>
+
+        <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-4 sm:p-5">
+          <h3 className="text-sm font-semibold text-slate-950">
+            Registrar nuevo pago
+          </h3>
+          <div className="mt-4">
+            <PagoForm
+              action={createPagoAction.bind(null, eventoId)}
+              initialState={getEmptyPagoFormState()}
+              servicios={servicios}
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-4 py-3">
+      <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1 text-lg font-semibold text-slate-950">{value}</dd>
+    </div>
+  );
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("es-AR", {
+    currency: "ARS",
+    maximumFractionDigits: 2,
+    style: "currency",
+  }).format(value);
+}
+
+function getEstadoCobroLabel(estado: EstadoCobro) {
+  const labels: Record<EstadoCobro, string> = {
+    pagado: "Pagado",
+    parcial: "Parcial",
+    pendiente: "Pendiente",
+  };
+
+  return labels[estado];
+}
+
+function getEstadoCobroVariant(estado: EstadoCobro) {
+  if (estado === "pagado") {
+    return "success";
+  }
+
+  if (estado === "parcial") {
+    return "warning";
+  }
+
+  return "neutral";
+}
+
+function getFormaPagoLabel(value: string) {
+  const labels: Record<string, string> = {
+    cheque: "Cheque",
+    efectivo_pesos: "Efectivo pesos",
+    efectivo_dolares: "Efectivo dolares",
+    efectivo_euros: "Efectivo euros",
+    retenciones: "Retenciones",
+    transferencia: "Transferencia",
+  };
+
+  return labels[value] ?? value;
+}

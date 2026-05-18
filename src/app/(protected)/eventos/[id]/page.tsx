@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { deleteEventoAction } from "@/app/(protected)/eventos/actions";
 import { DeleteEventoForm } from "@/components/eventos/delete-evento-form";
+import { ValoresEventoSection } from "@/components/evento-servicios/valores-evento-section";
+import { IngresosEventoSection } from "@/components/pagos/ingresos-evento-section";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,6 +14,8 @@ import {
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { getEventoById } from "@/lib/eventos/queries";
+import { getEventoValores } from "@/lib/evento-servicios/queries";
+import { getEventoIngresos } from "@/lib/pagos/queries";
 
 type EventoDetallePageProps = {
   params: Promise<{
@@ -27,6 +31,10 @@ export default async function EventoDetallePage({
   const { id } = await params;
   const paramsQuery = searchParams ? await searchParams : {};
   const { evento } = await getEventoById(id);
+  const [ingresos, valores] = await Promise.all([
+    getEventoIngresos(evento.id),
+    getEventoValores(evento.id),
+  ]);
   const wasCreated = Boolean(paramsQuery.created);
   const wasUpdated = Boolean(paramsQuery.updated);
 
@@ -156,6 +164,19 @@ export default async function EventoDetallePage({
           </dl>
         </CardContent>
       </Card>
+
+      <ValoresEventoSection
+        catalogo={valores.catalogo}
+        eventoId={evento.id}
+        servicios={valores.servicios}
+        totalEvento={valores.totalEvento}
+      />
+
+      <IngresosEventoSection
+        eventoId={evento.id}
+        ingresos={ingresos}
+        servicios={valores.opcionesPago}
+      />
     </section>
   );
 }

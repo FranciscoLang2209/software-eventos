@@ -595,6 +595,7 @@ export type Database = {
         Row: {
           banco: string | null
           catering_contrato_id: string | null
+          concepto: string | null
           created_at: string
           deleted_at: string | null
           es_garantia: boolean
@@ -615,6 +616,7 @@ export type Database = {
         Insert: {
           banco?: string | null
           catering_contrato_id?: string | null
+          concepto?: string | null
           created_at?: string
           deleted_at?: string | null
           es_garantia?: boolean
@@ -635,6 +637,7 @@ export type Database = {
         Update: {
           banco?: string | null
           catering_contrato_id?: string | null
+          concepto?: string | null
           created_at?: string
           deleted_at?: string | null
           es_garantia?: boolean
