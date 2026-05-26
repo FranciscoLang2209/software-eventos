@@ -103,8 +103,7 @@ export async function createPagoAction(
     await recalculateEventoServicioTotals(eventoServicioId);
   }
 
-  revalidatePath("/eventos");
-  revalidatePath(`/eventos/${evento.id}`);
+  revalidateEventoPaths(evento.id);
 
   return {
     ...getEmptyPagoFormState(),
@@ -164,8 +163,7 @@ export async function deletePagoAction(
     await recalculateEventoServicioTotals(data.evento_servicio_id);
   }
 
-  revalidatePath("/eventos");
-  revalidatePath(`/eventos/${evento.id}`);
+  revalidateEventoPaths(evento.id);
 
   return {};
 }
@@ -295,4 +293,10 @@ async function getAuthorizedActiveEvento(
 
 function toMoneyNumber(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function revalidateEventoPaths(eventoId: string) {
+  revalidatePath("/eventos");
+  revalidatePath(`/eventos/${eventoId}`);
+  revalidatePath(`/eventos/${eventoId}/ingresos`);
 }

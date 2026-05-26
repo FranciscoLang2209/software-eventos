@@ -591,6 +591,112 @@ export type Database = {
           },
         ]
       }
+      egresos: {
+        Row: {
+          catering_contrato_id: string | null
+          categoria: string
+          concepto: string
+          created_at: string
+          deleted_at: string | null
+          evento_id: string
+          evento_servicio_id: string | null
+          fecha_egreso: string
+          forma_pago: Database["public"]["Enums"]["forma_pago"] | null
+          id: string
+          importe_en_pesos: number
+          importe_moneda_original: number
+          moneda: Database["public"]["Enums"]["moneda"]
+          notas: string | null
+          proveedor: string | null
+          registrado_por: string | null
+          tipo_cambio: number | null
+          updated_at: string
+        }
+        Insert: {
+          catering_contrato_id?: string | null
+          categoria: string
+          concepto: string
+          created_at?: string
+          deleted_at?: string | null
+          evento_id: string
+          evento_servicio_id?: string | null
+          fecha_egreso: string
+          forma_pago?: Database["public"]["Enums"]["forma_pago"] | null
+          id?: string
+          importe_en_pesos: number
+          importe_moneda_original: number
+          moneda?: Database["public"]["Enums"]["moneda"]
+          notas?: string | null
+          proveedor?: string | null
+          registrado_por?: string | null
+          tipo_cambio?: number | null
+          updated_at?: string
+        }
+        Update: {
+          catering_contrato_id?: string | null
+          categoria?: string
+          concepto?: string
+          created_at?: string
+          deleted_at?: string | null
+          evento_id?: string
+          evento_servicio_id?: string | null
+          fecha_egreso?: string
+          forma_pago?: Database["public"]["Enums"]["forma_pago"] | null
+          id?: string
+          importe_en_pesos?: number
+          importe_moneda_original?: number
+          moneda?: Database["public"]["Enums"]["moneda"]
+          notas?: string | null
+          proveedor?: string | null
+          registrado_por?: string | null
+          tipo_cambio?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "egresos_catering_contrato_id_fkey"
+            columns: ["catering_contrato_id"]
+            isOneToOne: false
+            referencedRelation: "catering_contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "v_anticipacion_reserva"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "v_resumen_evento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_evento_servicio_id_fkey"
+            columns: ["evento_servicio_id"]
+            isOneToOne: false
+            referencedRelation: "evento_servicios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_registrado_por_fkey"
+            columns: ["registrado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagos: {
         Row: {
           banco: string | null
