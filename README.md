@@ -96,6 +96,21 @@ pnpm supabase:types
 
 The generated types are written to `src/types/database.types.ts`.
 
+## Monthly Service Prices Excel
+
+Admins can import monthly service prices from `/admin/precios-servicios`.
+The first worksheet must use these columns:
+
+| mes | año | salon | servicio | precio_base | iva_porcentaje | moneda |
+| --- | --- | --- | --- | --- | --- | --- |
+| 6 | 2026 | Salon Central | Salon | 1200000 | 21 | ARS |
+| 6 | 2026 |  | Tecnica Pack | 350000 | 21 | ARS |
+
+Required columns are `mes`, `año`, `servicio` and `precio_base`. `salon` is
+required for the `Salon` service and optional for packs. Supported currencies
+are `ARS`, `USD` and `EUR`; empty `moneda` defaults to `ARS`, and empty
+`iva_porcentaje` defaults to `0`.
+
 ## Connect To Vercel
 
 1. Push this repository to GitHub.

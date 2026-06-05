@@ -33,6 +33,11 @@ export default async function EventoDetallePage({
   const valores = await getEventoValores(evento.id);
   const wasCreated = Boolean(paramsQuery.created);
   const wasUpdated = Boolean(paramsQuery.updated);
+  const preciosAutocompletados = getSearchParamValue(
+    paramsQuery.precios_autocompletados,
+  );
+  const preciosFaltantes = getSearchParamValue(paramsQuery.precios_faltantes);
+  const revisarPreciosSalon = Boolean(paramsQuery.revisar_precios_salon);
 
   return (
     <section className="space-y-6">
@@ -47,6 +52,12 @@ export default async function EventoDetallePage({
               className={buttonVariants({ variant: "primary" })}
             >
               Editar
+            </Link>
+            <Link
+              href={`/eventos/${evento.id}/flujo-dinero`}
+              className={buttonVariants({ variant: "secondary" })}
+            >
+              Ver flujo de dinero
             </Link>
             <DeleteEventoForm
               action={deleteEventoAction.bind(null, evento.id)}
@@ -70,6 +81,27 @@ export default async function EventoDetallePage({
           {wasUpdated
             ? "Evento actualizado correctamente."
             : "Evento creado correctamente."}
+        </Alert>
+      ) : null}
+
+      {preciosAutocompletados ? (
+        <Alert role="status" variant="success" className="font-medium">
+          Se autocompletaron {preciosAutocompletados} servicios con precios
+          mensuales vigentes.
+        </Alert>
+      ) : null}
+
+      {preciosFaltantes ? (
+        <Alert variant="warning" className="font-medium">
+          No hay precio mensual cargado para: {preciosFaltantes}. Podes cargar
+          esos valores manualmente en los servicios del evento.
+        </Alert>
+      ) : null}
+
+      {revisarPreciosSalon ? (
+        <Alert variant="warning" className="font-medium">
+          El salon del evento cambio. No se sobrescribieron precios ya cargados;
+          revisa los servicios dependientes del salon antes de confirmar valores.
         </Alert>
       ) : null}
 
@@ -171,6 +203,14 @@ export default async function EventoDetallePage({
       />
     </section>
   );
+}
+
+function getSearchParamValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value;
 }
 
 function DetailItem({

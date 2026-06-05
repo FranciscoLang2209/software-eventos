@@ -2,7 +2,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 
 type EventoDetalleNavProps = {
-  active: "detalle" | "egresos" | "ingresos";
+  active: "detalle" | "egresos" | "flujo-dinero" | "ingresos";
   eventoId: string;
 };
 
@@ -21,6 +21,11 @@ const sections = [
     id: "egresos",
     label: "Egresos",
     pathname: "/egresos",
+  },
+  {
+    id: "flujo-dinero",
+    label: "Flujo de dinero",
+    pathname: "/flujo-dinero",
   },
 ] as const;
 

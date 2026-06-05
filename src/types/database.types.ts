@@ -872,6 +872,67 @@ export type Database = {
         }
         Relationships: []
       }
+      servicio_precios_mensuales: {
+        Row: {
+          created_at: string
+          id: string
+          importado_por: string | null
+          iva_porcentaje: number
+          moneda: Database["public"]["Enums"]["moneda"]
+          periodo: string
+          precio_base: number
+          salon_id: string | null
+          servicio_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          importado_por?: string | null
+          iva_porcentaje?: number
+          moneda?: Database["public"]["Enums"]["moneda"]
+          periodo: string
+          precio_base: number
+          salon_id?: string | null
+          servicio_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          importado_por?: string | null
+          iva_porcentaje?: number
+          moneda?: Database["public"]["Enums"]["moneda"]
+          periodo?: string
+          precio_base?: number
+          salon_id?: string | null
+          servicio_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servicio_precios_mensuales_importado_por_fkey"
+            columns: ["importado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servicio_precios_mensuales_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servicio_precios_mensuales_servicio_id_fkey"
+            columns: ["servicio_id"]
+            isOneToOne: false
+            referencedRelation: "servicios_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usuario_salon: {
         Row: {
           created_at: string

@@ -9,11 +9,12 @@ import {
   type EventoFormState,
   validateEventoForm,
 } from "@/lib/eventos/validation";
+import { applyMonthlyServicePricesToEvento } from "@/lib/precios-servicios/precios-mensuales";
 import type { Tables, TablesUpdate } from "@/types/database.types";
 
 type EditableEvento = Pick<
   Tables<"eventos">,
-  "id" | "salon_id" | "vendedor_id"
+  "created_at" | "id" | "salon_id" | "vendedor_id"
 >;
 
 export type DeleteEventoState = {
@@ -75,7 +76,7 @@ export async function createEventoAction(
       vendedor_id: vendedorId,
       estado: "borrador",
     })
-    .select("id")
+    .select("created_at, id")
     .single();
 
   if (error) {
@@ -86,9 +87,15 @@ export async function createEventoAction(
     };
   }
 
+  const priceResult = await applyMonthlyServicePricesToEvento({
+    eventoId: data.id,
+    referenceDate: data.created_at,
+    salonId: payload.salon_id,
+  });
+
   revalidatePath("/eventos");
   revalidatePath(`/eventos/${data.id}`);
-  redirect(`/eventos/${data.id}?created=1`);
+  redirect(getEventoRedirectUrl(data.id, "created", priceResult));
 }
 
 export async function updateEventoAction(
@@ -212,10 +219,20 @@ export async function updateEventoAction(
     };
   }
 
+  const priceResult = await applyMonthlyServicePricesToEvento({
+    eventoId: id,
+    referenceDate: currentEvento.created_at,
+    salonId: payload.salon_id,
+  });
+
   revalidatePath("/eventos");
   revalidatePath(`/eventos/${id}`);
   revalidatePath(`/eventos/${id}/editar`);
-  redirect(`/eventos/${id}?updated=1`);
+  redirect(
+    getEventoRedirectUrl(id, "updated", priceResult, {
+      shouldReviewSalonPrices: currentEvento.salon_id !== payload.salon_id,
+    }),
+  );
 }
 
 export async function deleteEventoAction(
@@ -398,7 +415,7 @@ async function getEditableEventoById(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("eventos")
-    .select("id, salon_id, vendedor_id")
+    .select("created_at, id, salon_id, vendedor_id")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -409,6 +426,36 @@ async function getEditableEventoById(
   }
 
   return data;
+}
+
+function getEventoRedirectUrl(
+  eventoId: string,
+  statusParam: "created" | "updated",
+  priceResult: {
+    inserted: number;
+    missing: string[];
+  },
+  options?: {
+    shouldReviewSalonPrices?: boolean;
+  },
+) {
+  const params = new URLSearchParams({
+    [statusParam]: "1",
+  });
+
+  if (priceResult.inserted > 0) {
+    params.set("precios_autocompletados", String(priceResult.inserted));
+  }
+
+  if (priceResult.missing.length > 0) {
+    params.set("precios_faltantes", priceResult.missing.join(", "));
+  }
+
+  if (options?.shouldReviewSalonPrices) {
+    params.set("revisar_precios_salon", "1");
+  }
+
+  return `/eventos/${eventoId}?${params.toString()}`;
 }
 
 async function validateSalonActivo(salonId: string) {
