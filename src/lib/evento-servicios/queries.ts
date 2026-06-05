@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  getMonthlyServicePricesForEvent,
+  type MonthlyServicePriceSuggestions,
+} from "@/lib/precios-servicios/precios-mensuales";
 import { logSupabaseError } from "@/lib/supabase/errors";
 import type { Enums, Tables } from "@/types/database.types";
 
@@ -92,6 +96,11 @@ export async function getEventoValores(eventoId: string) {
   }
 
   const pagosPorServicio = getPagosPorServicio(pagosResult.data as PagoServicioRow[]);
+  const catalogo = catalogoResult.data as ServicioCatalogoOption[];
+  const monthlyPriceSuggestions = await getMonthlyServicePricesForEvent(
+    eventoId,
+    catalogo.map((servicio) => servicio.id),
+  );
   const servicios = (serviciosResult.data as EventoServicioRow[]).map(
     (servicio) => {
       const totalConIva = toMoneyNumber(servicio.total_con_iva);
@@ -106,7 +115,8 @@ export async function getEventoValores(eventoId: string) {
   );
 
   return {
-    catalogo: catalogoResult.data as ServicioCatalogoOption[],
+    catalogo,
+    monthlyPriceSuggestions,
     opcionesPago: getOpcionesPago(servicios),
     servicios,
     totalEvento: roundMoney(
@@ -117,6 +127,9 @@ export async function getEventoValores(eventoId: string) {
     ),
   };
 }
+
+export type EventoValores = Awaited<ReturnType<typeof getEventoValores>>;
+export type EventoServicioMonthlyPriceSuggestions = MonthlyServicePriceSuggestions;
 
 export function getCategoriaServicioLabel(value: Enums<"categoria_servicio">) {
   const labels: Record<Enums<"categoria_servicio">, string> = {

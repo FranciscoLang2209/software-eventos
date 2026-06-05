@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useState } from "react";
 import { SubmitButton } from "@/components/salones/submit-button";
 import {
   FieldError,
@@ -18,6 +18,10 @@ import {
 } from "@/components/ui/select";
 import type { ServicioCatalogoOption } from "@/lib/evento-servicios/queries";
 import type { EventoServicioFormState } from "@/lib/evento-servicios/validation";
+import type {
+  MonthlyServicePriceSuggestion,
+  MonthlyServicePriceSuggestions,
+} from "@/lib/precios-servicios/precios-mensuales";
 import type { Enums } from "@/types/database.types";
 
 type EventoServicioFormProps = {
@@ -28,6 +32,7 @@ type EventoServicioFormProps = {
   catalogo: ServicioCatalogoOption[];
   formId: string;
   initialState: EventoServicioFormState;
+  monthlyPriceSuggestions?: MonthlyServicePriceSuggestions;
   resetOnSuccess?: boolean;
   submitLabel: string;
   submittingLabel: string;
@@ -38,33 +43,88 @@ export function EventoServicioForm({
   catalogo,
   formId,
   initialState,
+  monthlyPriceSuggestions = {},
   resetOnSuccess = false,
   submitLabel,
   submittingLabel,
 }: EventoServicioFormProps) {
   const [state, formAction] = useActionState(action, initialState);
-  const formRef = useRef<HTMLFormElement>(null);
-  const isCatalogoEmpty = catalogo.length === 0;
-  const servicioSelectValue =
-    resetOnSuccess && state.successMessage ? "" : state.fields.servicio_id;
-
-  useEffect(() => {
-    if (resetOnSuccess && state.successMessage) {
-      formRef.current?.reset();
-    }
-  }, [resetOnSuccess, state.successMessage]);
+  const renderedState =
+    resetOnSuccess && state.successMessage
+      ? getResetSuccessState(state.successMessage)
+      : state;
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-5" noValidate>
+    <EventoServicioFormFields
+      key={getFormStateKey(renderedState)}
+      catalogo={catalogo}
+      formAction={formAction}
+      formId={formId}
+      monthlyPriceSuggestions={monthlyPriceSuggestions}
+      state={renderedState}
+      submitLabel={submitLabel}
+      submittingLabel={submittingLabel}
+    />
+  );
+}
+
+function EventoServicioFormFields({
+  catalogo,
+  formAction,
+  formId,
+  monthlyPriceSuggestions,
+  state,
+  submitLabel,
+  submittingLabel,
+}: {
+  catalogo: ServicioCatalogoOption[];
+  formAction: (formData: FormData) => void;
+  formId: string;
+  monthlyPriceSuggestions: MonthlyServicePriceSuggestions;
+  state: EventoServicioFormState;
+  submitLabel: string;
+  submittingLabel: string;
+}) {
+  const isCatalogoEmpty = catalogo.length === 0;
+  const servicioSelectValue = state.fields.servicio_id;
+  const initialSuggestedFields = getSuggestedPriceFields({
+    fields: state.fields,
+    monthlyPriceSuggestions,
+    servicioId: servicioSelectValue,
+  });
+  const [servicioId, setServicioId] = useState(servicioSelectValue);
+  const [precioBase, setPrecioBase] = useState(
+    initialSuggestedFields.precio_base,
+  );
+  const [ivaPorcentaje, setIvaPorcentaje] = useState(
+    initialSuggestedFields.iva_porcentaje,
+  );
+  const selectedSuggestion = servicioId
+    ? (monthlyPriceSuggestions[servicioId] ?? null)
+    : null;
+
+  function handleServicioChange(value: string) {
+    setServicioId(value);
+
+    const suggestion = monthlyPriceSuggestions[value];
+
+    if (suggestion && isFillablePrecioBase(precioBase)) {
+      setPrecioBase(formatFormNumber(suggestion.precio_base));
+      setIvaPorcentaje(formatFormNumber(suggestion.iva_porcentaje));
+    }
+  }
+
+  return (
+    <form action={formAction} className="space-y-5" noValidate>
       <div className="grid gap-5 md:grid-cols-2">
         <div>
           <Label htmlFor={`${formId}-servicio_id`}>Servicio</Label>
           <Select
             name="servicio_id"
             required
-            defaultValue={servicioSelectValue}
+            value={servicioId}
+            onValueChange={handleServicioChange}
             disabled={isCatalogoEmpty}
-            key={`${formId}-${servicioSelectValue || "empty"}`}
           >
             <SelectTrigger
               id={`${formId}-servicio_id`}
@@ -117,7 +177,8 @@ export function EventoServicioForm({
             min="0"
             step="0.01"
             required
-            defaultValue={state.fields.precio_base}
+            value={precioBase}
+            onChange={(event) => setPrecioBase(event.target.value)}
             aria-invalid={Boolean(state.errors.precio_base)}
             aria-describedby={
               state.errors.precio_base
@@ -130,6 +191,11 @@ export function EventoServicioForm({
               {state.errors.precio_base}
             </FieldError>
           ) : null}
+          <MonthlyPriceHint
+            formId={formId}
+            hasSelectedService={Boolean(servicioId)}
+            suggestion={selectedSuggestion}
+          />
         </div>
 
         <div>
@@ -164,7 +230,8 @@ export function EventoServicioForm({
             min="0"
             max="100"
             step="0.01"
-            defaultValue={state.fields.iva_porcentaje}
+            value={ivaPorcentaje}
+            onChange={(event) => setIvaPorcentaje(event.target.value)}
             aria-invalid={Boolean(state.errors.iva_porcentaje)}
             aria-describedby={
               state.errors.iva_porcentaje
@@ -200,6 +267,103 @@ export function EventoServicioForm({
       </div>
     </form>
   );
+}
+
+function getResetSuccessState(
+  successMessage: string,
+): EventoServicioFormState {
+  return {
+    errors: {},
+    fields: {
+      adicionales_monto: "0",
+      iva_porcentaje: "0",
+      notas: "",
+      precio_base: "",
+      proveedor: "",
+      servicio_id: "",
+    },
+    formError: null,
+    successMessage,
+  };
+}
+
+function getFormStateKey(state: EventoServicioFormState) {
+  return JSON.stringify({
+    errors: state.errors,
+    fields: state.fields,
+    formError: state.formError,
+    successMessage: state.successMessage,
+  });
+}
+
+function MonthlyPriceHint({
+  formId,
+  hasSelectedService,
+  suggestion,
+}: {
+  formId: string;
+  hasSelectedService: boolean;
+  suggestion: MonthlyServicePriceSuggestion | null;
+}) {
+  if (!hasSelectedService) {
+    return null;
+  }
+
+  if (!suggestion) {
+    return (
+      <p
+        id={`${formId}-precio-sugerido`}
+        className="mt-2 text-xs text-amber-700"
+      >
+        Sin precio mensual cargado para este periodo.
+      </p>
+    );
+  }
+
+  const scopeText =
+    suggestion.scope === "salon" ? "especifica del salon" : "global";
+
+  return (
+    <p
+      id={`${formId}-precio-sugerido`}
+      className="mt-2 text-xs text-teal-700"
+    >
+      Precio sugerido desde lista mensual de {suggestion.periodLabel} (
+      {scopeText}).
+    </p>
+  );
+}
+
+function isFillablePrecioBase(value: string) {
+  return value.trim() === "";
+}
+
+function getSuggestedPriceFields({
+  fields,
+  monthlyPriceSuggestions,
+  servicioId,
+}: {
+  fields: EventoServicioFormState["fields"];
+  monthlyPriceSuggestions: MonthlyServicePriceSuggestions;
+  servicioId: string;
+}) {
+  const suggestion = servicioId ? monthlyPriceSuggestions[servicioId] : null;
+
+  if (!suggestion || !isFillablePrecioBase(fields.precio_base)) {
+    return {
+      iva_porcentaje: fields.iva_porcentaje,
+      precio_base: fields.precio_base,
+    };
+  }
+
+  return {
+    iva_porcentaje: formatFormNumber(suggestion.iva_porcentaje),
+    precio_base: formatFormNumber(suggestion.precio_base),
+  };
+}
+
+function formatFormNumber(value: number) {
+  return Number.isInteger(value) ? String(value) : String(value);
 }
 
 function getCategoriaServicioLabel(value: Enums<"categoria_servicio">) {

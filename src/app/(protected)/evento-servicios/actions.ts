@@ -63,7 +63,11 @@ export async function createEventoServicioAction(
       notas: payload.notas,
       precio_base: payload.precio_base,
       proveedor: payload.proveedor,
+      saldo_pendiente: payload.total_con_iva,
       servicio_id: payload.servicio_id,
+      total_con_iva: payload.total_con_iva,
+      total_pagado: 0,
+      total_sin_iva: payload.total_sin_iva,
     })
     .select("id")
     .maybeSingle();
@@ -119,6 +123,7 @@ export async function updateEventoServicioAction(
   }
 
   const supabase = await createClient();
+  const totalPagado = await getTotalPagadoEventoServicio(eventoServicioId);
   const { data, error } = await supabase
     .from("evento_servicios")
     .update({
@@ -127,7 +132,11 @@ export async function updateEventoServicioAction(
       notas: payload.notas,
       precio_base: payload.precio_base,
       proveedor: payload.proveedor,
+      saldo_pendiente: roundMoney(payload.total_con_iva - totalPagado),
       servicio_id: payload.servicio_id,
+      total_con_iva: payload.total_con_iva,
+      total_pagado: totalPagado,
+      total_sin_iva: payload.total_sin_iva,
       updated_at: new Date().toISOString(),
     })
     .eq("id", eventoServicioId)
@@ -220,7 +229,38 @@ export async function deleteEventoServicioAction(
 export async function recalculateEventoServicioTotals(
   eventoServicioId: string,
 ) {
-  void eventoServicioId;
+  const supabase = await createClient();
+  const { data: servicio, error: servicioError } = await supabase
+    .from("evento_servicios")
+    .select("id, total_con_iva")
+    .eq("id", eventoServicioId)
+    .maybeSingle();
+
+  if (servicioError) {
+    logSupabaseError(
+      "recalculateEventoServicioTotals obtener servicio",
+      servicioError,
+    );
+    return;
+  }
+
+  if (!servicio) {
+    return;
+  }
+
+  const totalPagado = await getTotalPagadoEventoServicio(eventoServicioId);
+  const { error } = await supabase
+    .from("evento_servicios")
+    .update({
+      saldo_pendiente: roundMoney(toMoneyNumber(servicio.total_con_iva) - totalPagado),
+      total_pagado: totalPagado,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", eventoServicioId);
+
+  if (error) {
+    logSupabaseError("recalculateEventoServicioTotals actualizar", error);
+  }
 }
 
 async function getAuthorizedActiveEvento(
@@ -297,7 +337,38 @@ async function hasActivePagos(eventoServicioId: string) {
   return data.length > 0;
 }
 
+async function getTotalPagadoEventoServicio(eventoServicioId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("pagos")
+    .select("importe_en_pesos, importe_moneda_original")
+    .eq("evento_servicio_id", eventoServicioId)
+    .is("deleted_at", null);
+
+  if (error) {
+    logSupabaseError("getTotalPagadoEventoServicio", error);
+    return 0;
+  }
+
+  return roundMoney(
+    data.reduce(
+      (total, pago) =>
+        total +
+        toMoneyNumber(pago.importe_en_pesos ?? pago.importe_moneda_original),
+      0,
+    ),
+  );
+}
+
 function revalidateEventoPaths(eventoId: string) {
   revalidatePath("/eventos");
   revalidatePath(`/eventos/${eventoId}`);
+}
+
+function toMoneyNumber(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }

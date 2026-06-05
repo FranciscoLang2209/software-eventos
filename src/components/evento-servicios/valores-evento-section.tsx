@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import type {
+  EventoServicioMonthlyPriceSuggestions,
   EventoServicioItem,
   ServicioCatalogoOption,
 } from "@/lib/evento-servicios/queries";
@@ -27,6 +28,7 @@ import {
 type ValoresEventoSectionProps = {
   catalogo: ServicioCatalogoOption[];
   eventoId: string;
+  monthlyPriceSuggestions: EventoServicioMonthlyPriceSuggestions;
   servicios: EventoServicioItem[];
   totalEvento: number;
 };
@@ -34,6 +36,7 @@ type ValoresEventoSectionProps = {
 export function ValoresEventoSection({
   catalogo,
   eventoId,
+  monthlyPriceSuggestions,
   servicios,
   totalEvento,
 }: ValoresEventoSectionProps) {
@@ -158,6 +161,7 @@ export function ValoresEventoSection({
                       initialState={getEventoServicioFormState(
                         getEventoServicioFieldsFromValues(servicio),
                       )}
+                      monthlyPriceSuggestions={monthlyPriceSuggestions}
                       submitLabel="Guardar cambios"
                       submittingLabel="Guardando..."
                     />
@@ -192,6 +196,7 @@ export function ValoresEventoSection({
               catalogo={catalogo}
               formId="evento-servicio-nuevo"
               initialState={getEmptyEventoServicioFormState()}
+              monthlyPriceSuggestions={monthlyPriceSuggestions}
               resetOnSuccess
               submitLabel="Agregar servicio"
               submittingLabel="Agregando..."

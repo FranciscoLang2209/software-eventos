@@ -198,6 +198,7 @@ export default async function EventoDetallePage({
       <ValoresEventoSection
         catalogo={valores.catalogo}
         eventoId={evento.id}
+        monthlyPriceSuggestions={valores.monthlyPriceSuggestions}
         servicios={valores.servicios}
         totalEvento={valores.totalEvento}
       />

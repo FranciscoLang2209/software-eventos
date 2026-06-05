@@ -1,7 +1,8 @@
 import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/server";
+import { calculateEventoServicioTotals } from "@/lib/evento-servicios/validation";
 import { logSupabaseError } from "@/lib/supabase/errors";
-import type { Enums, TablesInsert } from "@/types/database.types";
+import type { Enums, Tables, TablesInsert } from "@/types/database.types";
 
 export type ImportPreciosServiciosState = {
   errors: string[];
@@ -25,12 +26,6 @@ type SalonPrecio = {
   nombre: string;
 };
 
-type PrecioMensual = {
-  iva_porcentaje: number;
-  moneda: Enums<"moneda">;
-  precio_base: number;
-};
-
 type ValidImportRow = {
   iva_porcentaje: number;
   moneda: Enums<"moneda">;
@@ -44,6 +39,38 @@ type ApplyEventoPreciosResult = {
   inserted: number;
   missing: string[];
 };
+
+export type MonthlyServicePriceSuggestion = {
+  iva_porcentaje: number;
+  moneda: Enums<"moneda">;
+  periodLabel: string;
+  periodo: string;
+  precio_base: number;
+  scope: "global" | "salon";
+};
+
+export type MonthlyServicePriceSuggestions = Record<
+  string,
+  MonthlyServicePriceSuggestion
+>;
+
+type EventoPriceReference = Pick<
+  Tables<"eventos">,
+  "created_at" | "id" | "salon_id"
+>;
+
+type PrecioMensualCandidate = Pick<
+  Tables<"servicio_precios_mensuales">,
+  | "created_at"
+  | "id"
+  | "iva_porcentaje"
+  | "moneda"
+  | "periodo"
+  | "precio_base"
+  | "salon_id"
+  | "servicio_id"
+  | "updated_at"
+>;
 
 const TARGET_SERVICE_NAMES = [
   "salon",
@@ -208,12 +235,8 @@ export async function importPreciosMensualesFromExcel({
 
 export async function applyMonthlyServicePricesToEvento({
   eventoId,
-  referenceDate,
-  salonId,
 }: {
   eventoId: string;
-  referenceDate: string;
-  salonId: string;
 }): Promise<ApplyEventoPreciosResult> {
   const supabase = await createClient();
   const targetServicios = await getTargetServicios();
@@ -243,31 +266,40 @@ export async function applyMonthlyServicePricesToEvento({
   const existingServiceIds = new Set(existingRows.map((row) => row.servicio_id));
   const missing: string[] = [];
   const inserts: TablesInsert<"evento_servicios">[] = [];
-  const period = getPeriodFromDate(referenceDate);
+  const suggestions = await getMonthlyServicePricesForEvent(
+    eventoId,
+    targetServiceIds,
+  );
 
   for (const servicio of targetServicios) {
     if (existingServiceIds.has(servicio.id)) {
       continue;
     }
 
-    const precio = await getPrecioVigenteForServicio({
-      period,
-      salonId,
-      servicio,
-    });
+    const precio = suggestions[servicio.id];
 
     if (!precio) {
       missing.push(servicio.nombre);
       continue;
     }
 
+    const { totalConIva, totalSinIva } = calculateEventoServicioTotals({
+      adicionalesMonto: 0,
+      ivaPorcentaje: precio.iva_porcentaje,
+      precioBase: precio.precio_base,
+    });
+
     inserts.push({
       adicionales_monto: 0,
       evento_id: eventoId,
       iva_porcentaje: precio.iva_porcentaje,
-      notas: `Autocompletado desde precios mensuales (${period.slice(0, 7)}).`,
+      notas: `Autocompletado desde precios mensuales (${precio.periodLabel}).`,
       precio_base: precio.precio_base,
+      saldo_pendiente: totalConIva,
       servicio_id: servicio.id,
+      total_con_iva: totalConIva,
+      total_pagado: 0,
+      total_sin_iva: totalSinIva,
     });
   }
 
@@ -294,6 +326,63 @@ export async function applyMonthlyServicePricesToEvento({
     inserted: inserts.length,
     missing,
   };
+}
+
+export async function getMonthlyServicePricesForEvent(
+  eventoId: string,
+  servicioIds?: string[],
+): Promise<MonthlyServicePriceSuggestions> {
+  if (servicioIds && servicioIds.length === 0) {
+    return {};
+  }
+
+  const supabase = await createClient();
+  const { data: evento, error: eventoError } = await supabase
+    .from("eventos")
+    .select("created_at, id, salon_id")
+    .eq("id", eventoId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (eventoError) {
+    logSupabaseError("getMonthlyServicePricesForEvent evento", eventoError);
+    return {};
+  }
+
+  if (!evento) {
+    return {};
+  }
+
+  const periodRange = getUtcMonthRange(evento.created_at);
+
+  if (!periodRange) {
+    return {};
+  }
+
+  const query = supabase
+    .from("servicio_precios_mensuales")
+    .select(
+      "id, servicio_id, salon_id, periodo, precio_base, iva_porcentaje, moneda, created_at, updated_at",
+    )
+    .gte("periodo", periodRange.periodStart)
+    .lt("periodo", periodRange.periodEnd);
+
+  if (servicioIds) {
+    query.in("servicio_id", servicioIds);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    logSupabaseError("getMonthlyServicePricesForEvent precios", error);
+    return {};
+  }
+
+  return resolveMonthlyPriceSuggestions({
+    candidates: data as PrecioMensualCandidate[],
+    evento: evento as EventoPriceReference,
+    periodLabel: periodRange.periodLabel,
+  });
 }
 
 async function getWorkbookRows(file: File) {
@@ -450,62 +539,66 @@ async function getTargetServicios() {
   );
 }
 
-async function getPrecioVigenteForServicio({
-  period,
-  salonId,
-  servicio,
+function resolveMonthlyPriceSuggestions({
+  candidates,
+  evento,
+  periodLabel,
 }: {
-  period: string;
-  salonId: string;
-  servicio: ServicioCatalogoPrecio;
-}): Promise<PrecioMensual | null> {
-  const exactSalonPrice = await getPrecioMensual({
-    period,
-    salonId,
-    servicioId: servicio.id,
-  });
+  candidates: PrecioMensualCandidate[];
+  evento: EventoPriceReference;
+  periodLabel: string;
+}): MonthlyServicePriceSuggestions {
+  const selected = new Map<string, PrecioMensualCandidate>();
 
-  if (exactSalonPrice || isSalonService(servicio)) {
-    return exactSalonPrice;
+  for (const candidate of candidates) {
+    if (candidate.salon_id !== evento.salon_id && candidate.salon_id !== null) {
+      continue;
+    }
+
+    const current = selected.get(candidate.servicio_id);
+
+    if (!current || compareMonthlyPriceCandidate(candidate, current, evento) > 0) {
+      selected.set(candidate.servicio_id, candidate);
+    }
   }
 
-  return getPrecioMensual({
-    period,
-    salonId: null,
-    servicioId: servicio.id,
-  });
+  const suggestions: MonthlyServicePriceSuggestions = {};
+
+  for (const [servicioId, price] of selected) {
+    suggestions[servicioId] = {
+      iva_porcentaje: price.iva_porcentaje,
+      moneda: price.moneda,
+      periodLabel,
+      periodo: price.periodo,
+      precio_base: price.precio_base,
+      scope: price.salon_id === evento.salon_id ? "salon" : "global",
+    };
+  }
+
+  return suggestions;
 }
 
-async function getPrecioMensual({
-  period,
-  salonId,
-  servicioId,
-}: {
-  period: string;
-  salonId: string | null;
-  servicioId: string;
-}): Promise<PrecioMensual | null> {
-  const supabase = await createClient();
-  const query = supabase
-    .from("servicio_precios_mensuales")
-    .select("precio_base, iva_porcentaje, moneda")
-    .eq("servicio_id", servicioId)
-    .eq("periodo", period);
+function compareMonthlyPriceCandidate(
+  candidate: PrecioMensualCandidate,
+  current: PrecioMensualCandidate,
+  evento: EventoPriceReference,
+) {
+  const candidateScopeRank = candidate.salon_id === evento.salon_id ? 1 : 0;
+  const currentScopeRank = current.salon_id === evento.salon_id ? 1 : 0;
 
-  if (salonId) {
-    query.eq("salon_id", salonId);
-  } else {
-    query.is("salon_id", null);
+  if (candidateScopeRank !== currentScopeRank) {
+    return candidateScopeRank - currentScopeRank;
   }
 
-  const { data, error } = await query.maybeSingle();
+  return (
+    compareNullableString(candidate.updated_at, current.updated_at) ||
+    compareNullableString(candidate.created_at, current.created_at) ||
+    candidate.id.localeCompare(current.id)
+  );
+}
 
-  if (error) {
-    logSupabaseError("getPrecioMensual", error);
-    return null;
-  }
-
-  return data as PrecioMensual | null;
+function compareNullableString(left: string | null, right: string | null) {
+  return (left ?? "").localeCompare(right ?? "");
 }
 
 function normalizeRow(row: Record<string, unknown>) {
@@ -637,14 +730,32 @@ function normalizeNumberText(value: unknown) {
   return raw;
 }
 
-function getPeriodFromDate(value: string) {
+function getUtcMonthRange(value: string) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return getPeriodFromDate(new Date().toISOString());
+    return null;
   }
 
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const periodStart = formatUtcDate(year, month, 1);
+  const periodEnd = formatUtcDate(year, month + 1, 1);
+  const periodLabel = new Intl.DateTimeFormat("es-AR", {
+    month: "long",
+    timeZone: "UTC",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month, 1)));
+
+  return {
+    periodEnd,
+    periodLabel,
+    periodStart,
+  };
+}
+
+function formatUtcDate(year: number, monthIndex: number, day: number) {
+  return new Date(Date.UTC(year, monthIndex, day)).toISOString().slice(0, 10);
 }
 
 function isSalonService(servicio: ServicioCatalogoPrecio) {

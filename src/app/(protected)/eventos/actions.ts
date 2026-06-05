@@ -89,8 +89,6 @@ export async function createEventoAction(
 
   const priceResult = await applyMonthlyServicePricesToEvento({
     eventoId: data.id,
-    referenceDate: data.created_at,
-    salonId: payload.salon_id,
   });
 
   revalidatePath("/eventos");
@@ -221,8 +219,6 @@ export async function updateEventoAction(
 
   const priceResult = await applyMonthlyServicePricesToEvento({
     eventoId: id,
-    referenceDate: currentEvento.created_at,
-    salonId: payload.salon_id,
   });
 
   revalidatePath("/eventos");

@@ -29,6 +29,24 @@ export type EventoServicioPayload = {
   total_con_iva: number;
 };
 
+export function calculateEventoServicioTotals({
+  adicionalesMonto,
+  ivaPorcentaje,
+  precioBase,
+}: {
+  adicionalesMonto: number;
+  ivaPorcentaje: number;
+  precioBase: number;
+}) {
+  const totalSinIva = roundMoney(precioBase + adicionalesMonto);
+  const totalConIva = roundMoney(totalSinIva * (1 + ivaPorcentaje / 100));
+
+  return {
+    totalConIva,
+    totalSinIva,
+  };
+}
+
 export function getEmptyEventoServicioFormState(): EventoServicioFormState {
   return {
     fields: {
@@ -109,8 +127,11 @@ export function validateEventoServicioForm(formData: FormData): {
     };
   }
 
-  const totalSinIva = roundMoney(precioBase + adicionalesMonto);
-  const totalConIva = roundMoney(totalSinIva * (1 + ivaPorcentaje / 100));
+  const { totalConIva, totalSinIva } = calculateEventoServicioTotals({
+    adicionalesMonto,
+    ivaPorcentaje,
+    precioBase,
+  });
 
   return {
     state: {
@@ -164,7 +185,7 @@ export function getEventoServicioFieldsFromValues({
     adicionales_monto: formatFormNumber(adicionales_monto ?? 0),
     iva_porcentaje: formatFormNumber(iva_porcentaje ?? 0),
     notas: notas ?? "",
-    precio_base: formatFormNumber(precio_base ?? 0),
+    precio_base: precio_base === null ? "" : formatFormNumber(precio_base),
     proveedor: proveedor ?? "",
     servicio_id,
   };
