@@ -33,6 +33,7 @@ export default async function NuevoEventoPage() {
           assignments={assignments}
           initialState={emptyEventoFormState}
           isAdmin={isAdmin}
+          mode="create"
           salones={salones}
           vendedores={vendedores}
         />

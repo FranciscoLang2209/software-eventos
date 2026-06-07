@@ -32,6 +32,7 @@ export default async function EditarEventoPage({
         cancelHref={`/eventos/${evento.id}`}
         initialState={getEventoFormStateFromEvento(evento)}
         isAdmin={isAdmin}
+        mode="edit"
         pendingLabel="Guardando..."
         salones={salones}
         submitLabel="Guardar cambios"

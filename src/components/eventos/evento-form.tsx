@@ -31,7 +31,18 @@ import type {
   EventoSalonAssignment,
   EventoVendedor,
 } from "@/lib/eventos/queries";
-import type { EventoFormState } from "@/lib/eventos/validation";
+import {
+  EVENT_SUBTYPES,
+  EVENT_TYPES,
+  generateEventoName,
+  isEventoTipo,
+} from "@/lib/eventos/types";
+import type {
+  EventoFormMode,
+  EventoFormState,
+} from "@/lib/eventos/validation";
+
+const NO_SUBTIPO_VALUE = "__sin_subtipo__";
 
 type EventoFormProps = {
   action: (
@@ -42,6 +53,7 @@ type EventoFormProps = {
   cancelHref?: string;
   initialState: EventoFormState;
   isAdmin: boolean;
+  mode: EventoFormMode;
   pendingLabel?: string;
   salones: EventoSalon[];
   submitLabel?: string;
@@ -54,6 +66,7 @@ export function EventoForm({
   cancelHref = "/eventos",
   initialState,
   isAdmin,
+  mode,
   pendingLabel = "Creando...",
   salones,
   submitLabel = "Crear evento",
@@ -66,6 +79,29 @@ export function EventoForm({
   const [selectedVendedorId, setSelectedVendedorId] = useState(
     state.fields.vendedor_id,
   );
+  const [selectedFechaEvento, setSelectedFechaEvento] = useState(
+    state.fields.fecha_evento,
+  );
+  const [selectedTipoEvento, setSelectedTipoEvento] = useState(
+    state.fields.tipo_evento,
+  );
+  const [selectedSubtipoEvento, setSelectedSubtipoEvento] = useState(
+    state.fields.subtipo_evento,
+  );
+
+  const selectedSalon = useMemo(
+    () => salones.find((salon) => salon.id === selectedSalonId),
+    [salones, selectedSalonId],
+  );
+  const availableSubtypes = isEventoTipo(selectedTipoEvento)
+    ? EVENT_SUBTYPES[selectedTipoEvento]
+    : [];
+  const generatedEventoName = generateEventoName({
+    fechaEvento: selectedFechaEvento,
+    salonNombre: selectedSalon?.nombre ?? "",
+    subtipoEvento: selectedSubtipoEvento,
+    tipoEvento: selectedTipoEvento,
+  });
 
   const assignedVendedores = useMemo(() => {
     if (isAdmin) {
@@ -86,8 +122,12 @@ export function EventoForm({
   }, [assignments, isAdmin, selectedSalonId, vendedores]);
 
   return (
-    <form action={formAction} className="max-w-5xl space-y-6" noValidate>
-      <Card>
+    <form
+      action={formAction}
+      className="flex max-w-5xl flex-col gap-6"
+      noValidate
+    >
+      <Card className={mode === "create" ? "order-1" : undefined}>
         <CardHeader>
           <CardTitle>Salon y responsable</CardTitle>
           <CardDescription>
@@ -182,7 +222,7 @@ export function EventoForm({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={mode === "create" ? "order-3" : undefined}>
         <CardHeader>
           <CardTitle>Cliente</CardTitle>
           <CardDescription>
@@ -249,7 +289,7 @@ export function EventoForm({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={mode === "create" ? "order-2" : undefined}>
         <CardHeader>
           <CardTitle>Evento</CardTitle>
           <CardDescription>
@@ -265,7 +305,8 @@ export function EventoForm({
                 name="fecha_evento"
                 type="date"
                 required
-                defaultValue={state.fields.fecha_evento}
+                value={selectedFechaEvento}
+                onChange={(event) => setSelectedFechaEvento(event.target.value)}
                 aria-invalid={Boolean(state.errors.fecha_evento)}
                 aria-describedby={
                   state.errors.fecha_evento ? "fecha_evento-error" : undefined
@@ -278,29 +319,38 @@ export function EventoForm({
               ) : null}
             </div>
 
-            <div>
-              <Label htmlFor="fecha_carga">Fecha de carga</Label>
-              <Input
-                id="fecha_carga"
-                name="fecha_carga"
-                type="date"
-                required
-                defaultValue={state.fields.fecha_carga}
-                aria-invalid={Boolean(state.errors.fecha_carga)}
-                aria-describedby={
-                  state.errors.fecha_carga ? "fecha_carga-error" : undefined
-                }
-              />
-              {state.errors.fecha_carga ? (
-                <FieldError id="fecha_carga-error">
-                  {state.errors.fecha_carga}
-                </FieldError>
-              ) : null}
-            </div>
+            {mode === "create" ? (
+              <div>
+                <Label>Fecha de carga</Label>
+                <p className="mt-2 min-h-10 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600">
+                  Se completara al crear el evento: {state.fields.fecha_carga}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="fecha_carga">Fecha de carga</Label>
+                <Input
+                  id="fecha_carga"
+                  name="fecha_carga"
+                  type="date"
+                  required
+                  defaultValue={state.fields.fecha_carga}
+                  aria-invalid={Boolean(state.errors.fecha_carga)}
+                  aria-describedby={
+                    state.errors.fecha_carga ? "fecha_carga-error" : undefined
+                  }
+                />
+                {state.errors.fecha_carga ? (
+                  <FieldError id="fecha_carga-error">
+                    {state.errors.fecha_carga}
+                  </FieldError>
+                ) : null}
+              </div>
+            )}
 
             <div>
               <Label htmlFor="fecha_confirmacion_presupuesto">
-                Confirmacion de presupuesto
+                Fecha de confirmacion de presupuesto
               </Label>
               <Input
                 id="fecha_confirmacion_presupuesto"
@@ -323,21 +373,128 @@ export function EventoForm({
               ) : null}
             </div>
 
-            <TextField
-              id="nombre_evento"
-              label="Nombre del evento"
-              defaultValue={state.fields.nombre_evento}
-            />
-            <TextField
-              id="tipo_evento"
-              label="Tipo de evento"
-              defaultValue={state.fields.tipo_evento}
-            />
-            <TextField
-              id="subtipo_evento"
-              label="Subtipo de evento"
-              defaultValue={state.fields.subtipo_evento}
-            />
+            {mode === "create" ? (
+              <>
+                <div>
+                  <Label htmlFor="tipo_evento">Tipo de evento</Label>
+                  <Select
+                    name="tipo_evento"
+                    required
+                    value={selectedTipoEvento}
+                    onValueChange={(value) => {
+                      setSelectedTipoEvento(value);
+                      setSelectedSubtipoEvento("");
+                    }}
+                  >
+                    <SelectTrigger
+                      id="tipo_evento"
+                      aria-invalid={Boolean(state.errors.tipo_evento)}
+                      aria-describedby={
+                        state.errors.tipo_evento
+                          ? "tipo_evento-error"
+                          : undefined
+                      }
+                    >
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EVENT_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {state.errors.tipo_evento ? (
+                    <FieldError id="tipo_evento-error">
+                      {state.errors.tipo_evento}
+                    </FieldError>
+                  ) : null}
+                </div>
+
+                <div>
+                  <input
+                    type="hidden"
+                    name="subtipo_evento"
+                    value={selectedSubtipoEvento}
+                  />
+                  <Label htmlFor="subtipo_evento">Subtipo de evento</Label>
+                  <Select
+                    value={selectedSubtipoEvento || NO_SUBTIPO_VALUE}
+                    onValueChange={(value) =>
+                      setSelectedSubtipoEvento(
+                        value === NO_SUBTIPO_VALUE ? "" : value,
+                      )
+                    }
+                    disabled={!isEventoTipo(selectedTipoEvento)}
+                  >
+                    <SelectTrigger
+                      id="subtipo_evento"
+                      aria-invalid={Boolean(state.errors.subtipo_evento)}
+                      aria-describedby={
+                        state.errors.subtipo_evento
+                          ? "subtipo_evento-error"
+                          : undefined
+                      }
+                    >
+                      <SelectValue
+                        placeholder={
+                          selectedTipoEvento
+                            ? "Seleccionar subtipo"
+                            : "Primero selecciona un tipo"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_SUBTIPO_VALUE}>
+                        Sin subtipo
+                      </SelectItem>
+                      {availableSubtypes.map((subtype) => (
+                        <SelectItem key={subtype} value={subtype}>
+                          {subtype}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {state.errors.subtipo_evento ? (
+                    <FieldError id="subtipo_evento-error">
+                      {state.errors.subtipo_evento}
+                    </FieldError>
+                  ) : null}
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Label htmlFor="nombre_evento_preview">
+                    Nombre del evento
+                  </Label>
+                  <Input
+                    id="nombre_evento_preview"
+                    type="text"
+                    readOnly
+                    value={generatedEventoName}
+                    placeholder="Se generara con fecha, tipo y salon"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <TextField
+                  id="nombre_evento"
+                  label="Nombre del evento"
+                  defaultValue={state.fields.nombre_evento}
+                />
+                <TextField
+                  id="tipo_evento"
+                  label="Tipo de evento"
+                  defaultValue={state.fields.tipo_evento}
+                />
+                <TextField
+                  id="subtipo_evento"
+                  label="Subtipo de evento"
+                  defaultValue={state.fields.subtipo_evento}
+                />
+              </>
+            )}
             <TextField
               id="espacio"
               label="Espacio"
@@ -371,7 +528,7 @@ export function EventoForm({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={mode === "create" ? "order-4" : undefined}>
         <CardHeader>
           <CardTitle>Informacion comercial</CardTitle>
           <CardDescription>
@@ -411,7 +568,13 @@ export function EventoForm({
         </CardContent>
       </Card>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <div
+        className={
+          mode === "create"
+            ? "order-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
+            : "flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
+        }
+      >
         <Link
           href={cancelHref}
           className={buttonVariants({ variant: "secondary" })}

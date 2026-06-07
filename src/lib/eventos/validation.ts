@@ -1,4 +1,7 @@
 import type { Tables, TablesInsert } from "@/types/database.types";
+import { isEventoSubtipoForTipo, isEventoTipo } from "@/lib/eventos/types";
+
+export type EventoFormMode = "create" | "edit";
 
 export type EventoFormFields = {
   salon_id: string;
@@ -106,11 +109,21 @@ export function getEventoFormStateFromEvento(
   };
 }
 
-export function validateEventoForm(formData: FormData): {
+export function validateEventoForm(
+  formData: FormData,
+  options: {
+    mode?: EventoFormMode;
+  } = {},
+): {
   state: EventoFormState;
   payload: EventoPayload | null;
 } {
+  const mode = options.mode ?? "edit";
   const fields = getEventoFields(formData);
+  if (mode === "create" && !fields.fecha_carga) {
+    fields.fecha_carga = getTodayInputValue();
+  }
+
   const errors: EventoFormErrors = {};
   const salonId = fields.salon_id.trim();
   const vendedorId = fields.vendedor_id.trim();
@@ -134,9 +147,9 @@ export function validateEventoForm(formData: FormData): {
     errors.fecha_evento = "Ingresa una fecha valida.";
   }
 
-  if (!fechaCarga) {
+  if (mode === "edit" && !fechaCarga) {
     errors.fecha_carga = "Ingresa la fecha de carga.";
-  } else if (!isDateInputValue(fechaCarga)) {
+  } else if (fechaCarga && !isDateInputValue(fechaCarga)) {
     errors.fecha_carga = "Ingresa una fecha valida.";
   }
 
@@ -145,6 +158,26 @@ export function validateEventoForm(formData: FormData): {
     !isDateInputValue(fechaConfirmacionPresupuesto)
   ) {
     errors.fecha_confirmacion_presupuesto = "Ingresa una fecha valida.";
+  }
+
+  const tipoEvento = fields.tipo_evento.trim();
+  const subtipoEvento = fields.subtipo_evento.trim();
+
+  if (mode === "create") {
+    if (!tipoEvento) {
+      errors.tipo_evento = "Selecciona el tipo de evento.";
+    } else if (!isEventoTipo(tipoEvento)) {
+      errors.tipo_evento = "Selecciona un tipo de evento valido.";
+    }
+
+    if (
+      tipoEvento &&
+      subtipoEvento &&
+      !isEventoSubtipoForTipo(tipoEvento, subtipoEvento)
+    ) {
+      errors.subtipo_evento =
+        "Selecciona un subtipo compatible con el tipo de evento.";
+    }
   }
 
   const paxAdultos = parseOptionalInteger(
@@ -203,11 +236,11 @@ export function validateEventoForm(formData: FormData): {
       ),
       cliente_contacto: nullableTrim(fields.cliente_contacto),
       fecha_evento: fechaEvento,
-      fecha_carga: fechaCarga,
+      fecha_carga: fechaCarga || getTodayInputValue(),
       fecha_confirmacion_presupuesto: fechaConfirmacionPresupuesto || null,
       nombre_evento: nullableTrim(fields.nombre_evento),
-      tipo_evento: nullableTrim(fields.tipo_evento),
-      subtipo_evento: nullableTrim(fields.subtipo_evento),
+      tipo_evento: nullableTrim(tipoEvento),
+      subtipo_evento: nullableTrim(subtipoEvento),
       espacio: nullableTrim(fields.espacio),
       pax_adultos: paxAdultos,
       pax_jovenes: paxJovenes,
@@ -308,7 +341,7 @@ function parseOptionalNumber(
   return numberValue;
 }
 
-function getTodayInputValue() {
+export function getTodayInputValue() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     day: "2-digit",
     month: "2-digit",

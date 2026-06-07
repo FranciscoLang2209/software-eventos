@@ -7,8 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
 import {
   type EventoFormState,
+  getTodayInputValue,
   validateEventoForm,
 } from "@/lib/eventos/validation";
+import { generateEventoName } from "@/lib/eventos/types";
 import { applyMonthlyServicePricesToEvento } from "@/lib/precios-servicios/precios-mensuales";
 import type { Tables, TablesUpdate } from "@/types/database.types";
 
@@ -34,7 +36,7 @@ export async function createEventoAction(
     redirect("/dashboard");
   }
 
-  const { state, payload } = validateEventoForm(formData);
+  const { state, payload } = validateEventoForm(formData, { mode: "create" });
 
   if (!payload) {
     return state;
@@ -69,10 +71,49 @@ export async function createEventoAction(
     };
   }
 
+  const { data: salon, error: salonError } = await supabase
+    .from("salones")
+    .select("nombre")
+    .eq("id", payload.salon_id)
+    .eq("activo", true)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (salonError) {
+    logSupabaseError("createEventoAction obtener salon", salonError);
+    return {
+      ...state,
+      formError: "No se pudo validar el salon seleccionado.",
+    };
+  }
+
+  if (!salon) {
+    return {
+      ...state,
+      formError: "Selecciona un salon activo disponible.",
+    };
+  }
+
+  const nombreEvento = generateEventoName({
+    fechaEvento: payload.fecha_evento,
+    salonNombre: salon.nombre,
+    subtipoEvento: payload.subtipo_evento,
+    tipoEvento: payload.tipo_evento ?? "",
+  });
+
+  if (!nombreEvento) {
+    return {
+      ...state,
+      formError: "No se pudo generar el nombre del evento.",
+    };
+  }
+
   const { data, error } = await supabase
     .from("eventos")
     .insert({
       ...payload,
+      fecha_carga: getTodayInputValue(),
+      nombre_evento: nombreEvento,
       vendedor_id: vendedorId,
       estado: "borrador",
     })
@@ -107,7 +148,7 @@ export async function updateEventoAction(
     redirect("/dashboard");
   }
 
-  const { state, payload } = validateEventoForm(formData);
+  const { state, payload } = validateEventoForm(formData, { mode: "edit" });
 
   if (!payload) {
     return state;
