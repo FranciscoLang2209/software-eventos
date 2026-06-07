@@ -127,10 +127,20 @@ export default async function EventoDetallePage({
                 value={formatDate(evento.fecha_evento)}
               />
               <DetailItem
-                label="Fecha de contrato"
+                label="Fecha de carga"
+                value={formatDate(evento.fecha_carga)}
+              />
+              <DetailItem
+                label="Confirmacion de presupuesto"
+                value={formatDate(evento.fecha_confirmacion_presupuesto)}
+              />
+              <DetailItem
+                label="Primer ingreso"
                 value={formatDate(evento.fecha_contrato)}
               />
+              <DetailItem label="Nombre del evento" value={evento.nombre_evento} />
               <DetailItem label="Tipo de evento" value={evento.tipo_evento} />
+              <DetailItem label="Subtipo de evento" value={evento.subtipo_evento} />
               <DetailItem label="Espacio" value={evento.espacio} />
             </dl>
           </CardContent>

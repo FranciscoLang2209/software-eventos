@@ -11,8 +11,11 @@ export type EventoFormFields = {
   cliente_direccion_factura: string;
   cliente_contacto: string;
   fecha_evento: string;
-  fecha_contrato: string;
+  fecha_carga: string;
+  fecha_confirmacion_presupuesto: string;
+  nombre_evento: string;
   tipo_evento: string;
+  subtipo_evento: string;
   espacio: string;
   pax_adultos: string;
   pax_jovenes: string;
@@ -33,7 +36,7 @@ export type EventoFormState = {
 
 export type EventoPayload = Omit<
   TablesInsert<"eventos">,
-  "estado" | "vendedor_id"
+  "estado" | "fecha_contrato" | "vendedor_id"
 > & {
   vendedor_id?: string;
 };
@@ -50,8 +53,11 @@ export const emptyEventoFormState: EventoFormState = {
     cliente_direccion_factura: "",
     cliente_contacto: "",
     fecha_evento: "",
-    fecha_contrato: "",
+    fecha_carga: getTodayInputValue(),
+    fecha_confirmacion_presupuesto: "",
+    nombre_evento: "",
     tipo_evento: "",
+    subtipo_evento: "",
     espacio: "",
     pax_adultos: "",
     pax_jovenes: "",
@@ -80,8 +86,12 @@ export function getEventoFormStateFromEvento(
       cliente_direccion_factura: evento.cliente_direccion_factura ?? "",
       cliente_contacto: evento.cliente_contacto ?? "",
       fecha_evento: evento.fecha_evento,
-      fecha_contrato: evento.fecha_contrato ?? "",
+      fecha_carga: evento.fecha_carga,
+      fecha_confirmacion_presupuesto:
+        evento.fecha_confirmacion_presupuesto ?? "",
+      nombre_evento: evento.nombre_evento ?? "",
       tipo_evento: evento.tipo_evento ?? "",
+      subtipo_evento: evento.subtipo_evento ?? "",
       espacio: evento.espacio ?? "",
       pax_adultos: evento.pax_adultos?.toString() ?? "",
       pax_jovenes: evento.pax_jovenes?.toString() ?? "",
@@ -106,7 +116,9 @@ export function validateEventoForm(formData: FormData): {
   const vendedorId = fields.vendedor_id.trim();
   const clienteNombre = fields.cliente_nombre.trim();
   const fechaEvento = fields.fecha_evento.trim();
-  const fechaContrato = fields.fecha_contrato.trim();
+  const fechaCarga = fields.fecha_carga.trim();
+  const fechaConfirmacionPresupuesto =
+    fields.fecha_confirmacion_presupuesto.trim();
 
   if (!salonId) {
     errors.salon_id = "Selecciona un salon.";
@@ -122,8 +134,17 @@ export function validateEventoForm(formData: FormData): {
     errors.fecha_evento = "Ingresa una fecha valida.";
   }
 
-  if (fechaContrato && !isDateInputValue(fechaContrato)) {
-    errors.fecha_contrato = "Ingresa una fecha valida.";
+  if (!fechaCarga) {
+    errors.fecha_carga = "Ingresa la fecha de carga.";
+  } else if (!isDateInputValue(fechaCarga)) {
+    errors.fecha_carga = "Ingresa una fecha valida.";
+  }
+
+  if (
+    fechaConfirmacionPresupuesto &&
+    !isDateInputValue(fechaConfirmacionPresupuesto)
+  ) {
+    errors.fecha_confirmacion_presupuesto = "Ingresa una fecha valida.";
   }
 
   const paxAdultos = parseOptionalInteger(
@@ -182,8 +203,11 @@ export function validateEventoForm(formData: FormData): {
       ),
       cliente_contacto: nullableTrim(fields.cliente_contacto),
       fecha_evento: fechaEvento,
-      fecha_contrato: fechaContrato || null,
+      fecha_carga: fechaCarga,
+      fecha_confirmacion_presupuesto: fechaConfirmacionPresupuesto || null,
+      nombre_evento: nullableTrim(fields.nombre_evento),
       tipo_evento: nullableTrim(fields.tipo_evento),
+      subtipo_evento: nullableTrim(fields.subtipo_evento),
       espacio: nullableTrim(fields.espacio),
       pax_adultos: paxAdultos,
       pax_jovenes: paxJovenes,
@@ -211,8 +235,14 @@ function getEventoFields(formData: FormData): EventoFormFields {
     ),
     cliente_contacto: getString(formData, "cliente_contacto"),
     fecha_evento: getString(formData, "fecha_evento"),
-    fecha_contrato: getString(formData, "fecha_contrato"),
+    fecha_carga: getString(formData, "fecha_carga"),
+    fecha_confirmacion_presupuesto: getString(
+      formData,
+      "fecha_confirmacion_presupuesto",
+    ),
+    nombre_evento: getString(formData, "nombre_evento"),
     tipo_evento: getString(formData, "tipo_evento"),
+    subtipo_evento: getString(formData, "subtipo_evento"),
     espacio: getString(formData, "espacio"),
     pax_adultos: getString(formData, "pax_adultos"),
     pax_jovenes: getString(formData, "pax_jovenes"),
@@ -276,6 +306,18 @@ function parseOptionalNumber(
   }
 
   return numberValue;
+}
+
+function getTodayInputValue() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 function isDateInputValue(value: string) {

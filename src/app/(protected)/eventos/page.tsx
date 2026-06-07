@@ -87,17 +87,23 @@ export default async function EventosPage({ searchParams }: EventosPageProps) {
                   </TableCell>
                   <TableCell>
                     <p className="font-medium text-slate-950">
-                      {evento.cliente_nombre}
+                      {evento.nombre_evento ?? evento.cliente_nombre}
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
-                      Contrato: {formatDate(evento.fecha_contrato) ?? "-"}
+                      Carga: {formatDate(evento.fecha_carga) ?? "-"}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Primer ingreso:{" "}
+                      {formatDate(evento.fecha_contrato) ?? "-"}
                     </p>
                   </TableCell>
                   <TableCell className="text-slate-600">
                     {evento.salones?.nombre ?? "-"}
                   </TableCell>
                   <TableCell className="text-slate-600">
-                    {evento.tipo_evento ?? "-"}
+                    {[evento.tipo_evento, evento.subtipo_evento]
+                      .filter(Boolean)
+                      .join(" / ") || "-"}
                   </TableCell>
                   <TableCell>
                     <Badge variant={getEstadoVariant(evento.estado)}>

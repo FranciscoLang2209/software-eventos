@@ -23,11 +23,14 @@ export type EventoDetalle = Tables<"eventos"> & {
 export type EventoListado = Pick<
   Tables<"eventos">,
   | "estado"
+  | "fecha_carga"
   | "fecha_contrato"
   | "fecha_evento"
   | "id"
   | "cliente_nombre"
+  | "nombre_evento"
   | "salon_id"
+  | "subtipo_evento"
   | "tipo_evento"
   | "vendedor_id"
 > & {
@@ -41,7 +44,7 @@ export async function listEventos() {
   const query = supabase
     .from("eventos")
     .select(
-      "id, cliente_nombre, estado, fecha_evento, fecha_contrato, tipo_evento, salon_id, vendedor_id, salones(nombre), usuarios(full_name, email)",
+      "id, cliente_nombre, estado, fecha_carga, fecha_contrato, fecha_evento, nombre_evento, subtipo_evento, tipo_evento, salon_id, vendedor_id, salones(nombre), usuarios(full_name, email)",
     )
     .is("deleted_at", null)
     .order("fecha_evento", { ascending: true });

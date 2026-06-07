@@ -279,30 +279,64 @@ export function EventoForm({
             </div>
 
             <div>
-              <Label htmlFor="fecha_contrato">Fecha de contrato</Label>
+              <Label htmlFor="fecha_carga">Fecha de carga</Label>
               <Input
-                id="fecha_contrato"
-                name="fecha_contrato"
+                id="fecha_carga"
+                name="fecha_carga"
                 type="date"
-                defaultValue={state.fields.fecha_contrato}
-                aria-invalid={Boolean(state.errors.fecha_contrato)}
+                required
+                defaultValue={state.fields.fecha_carga}
+                aria-invalid={Boolean(state.errors.fecha_carga)}
                 aria-describedby={
-                  state.errors.fecha_contrato
-                    ? "fecha_contrato-error"
+                  state.errors.fecha_carga ? "fecha_carga-error" : undefined
+                }
+              />
+              {state.errors.fecha_carga ? (
+                <FieldError id="fecha_carga-error">
+                  {state.errors.fecha_carga}
+                </FieldError>
+              ) : null}
+            </div>
+
+            <div>
+              <Label htmlFor="fecha_confirmacion_presupuesto">
+                Confirmacion de presupuesto
+              </Label>
+              <Input
+                id="fecha_confirmacion_presupuesto"
+                name="fecha_confirmacion_presupuesto"
+                type="date"
+                defaultValue={state.fields.fecha_confirmacion_presupuesto}
+                aria-invalid={Boolean(
+                  state.errors.fecha_confirmacion_presupuesto,
+                )}
+                aria-describedby={
+                  state.errors.fecha_confirmacion_presupuesto
+                    ? "fecha_confirmacion_presupuesto-error"
                     : undefined
                 }
               />
-              {state.errors.fecha_contrato ? (
-                <FieldError id="fecha_contrato-error">
-                  {state.errors.fecha_contrato}
+              {state.errors.fecha_confirmacion_presupuesto ? (
+                <FieldError id="fecha_confirmacion_presupuesto-error">
+                  {state.errors.fecha_confirmacion_presupuesto}
                 </FieldError>
               ) : null}
             </div>
 
             <TextField
+              id="nombre_evento"
+              label="Nombre del evento"
+              defaultValue={state.fields.nombre_evento}
+            />
+            <TextField
               id="tipo_evento"
               label="Tipo de evento"
               defaultValue={state.fields.tipo_evento}
+            />
+            <TextField
+              id="subtipo_evento"
+              label="Subtipo de evento"
+              defaultValue={state.fields.subtipo_evento}
             />
             <TextField
               id="espacio"

@@ -505,10 +505,13 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           espacio: string | null
+          fecha_carga: string
+          fecha_confirmacion_presupuesto: string | null
           estado: Database["public"]["Enums"]["estado_evento"]
           fecha_contrato: string | null
           fecha_evento: string
           id: string
+          nombre_evento: string | null
           observaciones: string | null
           organizador_externo: string | null
           pax_adultos: number | null
@@ -516,6 +519,7 @@ export type Database = {
           pax_jovenes: number | null
           pax_menores: number | null
           salon_id: string
+          subtipo_evento: string | null
           tipo_evento: string | null
           updated_at: string
           vendedor_id: string
@@ -532,10 +536,13 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           espacio?: string | null
+          fecha_carga?: string
+          fecha_confirmacion_presupuesto?: string | null
           estado?: Database["public"]["Enums"]["estado_evento"]
           fecha_contrato?: string | null
           fecha_evento: string
           id?: string
+          nombre_evento?: string | null
           observaciones?: string | null
           organizador_externo?: string | null
           pax_adultos?: number | null
@@ -543,6 +550,7 @@ export type Database = {
           pax_jovenes?: number | null
           pax_menores?: number | null
           salon_id: string
+          subtipo_evento?: string | null
           tipo_evento?: string | null
           updated_at?: string
           vendedor_id: string
@@ -559,10 +567,13 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           espacio?: string | null
+          fecha_carga?: string
+          fecha_confirmacion_presupuesto?: string | null
           estado?: Database["public"]["Enums"]["estado_evento"]
           fecha_contrato?: string | null
           fecha_evento?: string
           id?: string
+          nombre_evento?: string | null
           observaciones?: string | null
           organizador_externo?: string | null
           pax_adultos?: number | null
@@ -570,6 +581,7 @@ export type Database = {
           pax_jovenes?: number | null
           pax_menores?: number | null
           salon_id?: string
+          subtipo_evento?: string | null
           tipo_evento?: string | null
           updated_at?: string
           vendedor_id?: string

@@ -99,6 +99,8 @@ export async function createPagoAction(
     };
   }
 
+  await setEventoFechaContratoIfMissing(evento.id, payload.fecha_pago);
+
   if (eventoServicioId) {
     await recalculateEventoServicioTotals(eventoServicioId);
   }
@@ -249,6 +251,24 @@ async function getEventoServicioConMayorSaldo(eventoId: string) {
   }
 
   return selectedServicioId;
+}
+
+async function setEventoFechaContratoIfMissing(
+  eventoId: string,
+  fechaPago: string,
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("eventos")
+    .update({
+      fecha_contrato: fechaPago,
+    })
+    .eq("id", eventoId)
+    .is("fecha_contrato", null);
+
+  if (error) {
+    logSupabaseError("pagos actualizar fecha de primer ingreso", error);
+  }
 }
 
 async function getAuthorizedActiveEvento(
