@@ -227,8 +227,10 @@ export async function updateEventoAction(
     pax_jovenes: payload.pax_jovenes,
     pax_menores: payload.pax_menores,
     pax_bebes: payload.pax_bebes,
-    organizador_externo: payload.organizador_externo,
-    comision_organizador: payload.comision_organizador,
+    tiene_organizador: payload.tiene_organizador,
+    organizador_nombre: payload.organizador_nombre,
+    organizador_email: payload.organizador_email,
+    organizador_telefono: payload.organizador_telefono,
     observaciones: payload.observaciones,
   };
 
@@ -259,6 +261,28 @@ export async function updateEventoAction(
       formError:
         "No se pudo actualizar el evento. Verifica los datos e intenta nuevamente.",
     };
+  }
+
+  if (!payload.tiene_organizador) {
+    const { error: serviciosError } = await supabase
+      .from("evento_servicios")
+      .update({
+        comisiona_organizador: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("evento_id", id);
+
+    if (serviciosError) {
+      logSupabaseError(
+        "updateEventoAction desmarcar comisiona organizador",
+        serviciosError,
+      );
+      return {
+        ...state,
+        formError:
+          "El evento se actualizo, pero no se pudieron desmarcar los servicios que comisionan.",
+      };
+    }
   }
 
   const priceResult = await applyMonthlyServicePricesToEvento({

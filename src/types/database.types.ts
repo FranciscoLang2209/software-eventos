@@ -367,6 +367,7 @@ export type Database = {
       evento_servicios: {
         Row: {
           adicionales_monto: number | null
+          comisiona_organizador: boolean
           created_at: string
           evento_id: string
           id: string
@@ -384,6 +385,7 @@ export type Database = {
         }
         Insert: {
           adicionales_monto?: number | null
+          comisiona_organizador?: boolean
           created_at?: string
           evento_id: string
           id?: string
@@ -401,6 +403,7 @@ export type Database = {
         }
         Update: {
           adicionales_monto?: number | null
+          comisiona_organizador?: boolean
           created_at?: string
           evento_id?: string
           id?: string
@@ -517,6 +520,9 @@ export type Database = {
           nombre_evento: string | null
           observaciones: string | null
           organizador_externo: string | null
+          organizador_email: string | null
+          organizador_nombre: string | null
+          organizador_telefono: string | null
           pax_adultos: number | null
           pax_bebes: number | null
           pax_jovenes: number | null
@@ -524,6 +530,7 @@ export type Database = {
           salon_id: string
           subtipo_evento: string | null
           tipo_evento: string | null
+          tiene_organizador: boolean
           updated_at: string
           vendedor_id: string
         }
@@ -548,6 +555,9 @@ export type Database = {
           nombre_evento?: string | null
           observaciones?: string | null
           organizador_externo?: string | null
+          organizador_email?: string | null
+          organizador_nombre?: string | null
+          organizador_telefono?: string | null
           pax_adultos?: number | null
           pax_bebes?: number | null
           pax_jovenes?: number | null
@@ -555,6 +565,7 @@ export type Database = {
           salon_id: string
           subtipo_evento?: string | null
           tipo_evento?: string | null
+          tiene_organizador?: boolean
           updated_at?: string
           vendedor_id: string
         }
@@ -579,6 +590,9 @@ export type Database = {
           nombre_evento?: string | null
           observaciones?: string | null
           organizador_externo?: string | null
+          organizador_email?: string | null
+          organizador_nombre?: string | null
+          organizador_telefono?: string | null
           pax_adultos?: number | null
           pax_bebes?: number | null
           pax_jovenes?: number | null
@@ -586,6 +600,7 @@ export type Database = {
           salon_id?: string
           subtipo_evento?: string | null
           tipo_evento?: string | null
+          tiene_organizador?: boolean
           updated_at?: string
           vendedor_id?: string
         }

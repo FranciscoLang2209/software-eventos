@@ -24,8 +24,10 @@ export type EventoFormFields = {
   pax_jovenes: string;
   pax_menores: string;
   pax_bebes: string;
-  organizador_externo: string;
-  comision_organizador: string;
+  tiene_organizador: string;
+  organizador_nombre: string;
+  organizador_email: string;
+  organizador_telefono: string;
   observaciones: string;
 };
 
@@ -66,8 +68,10 @@ export const emptyEventoFormState: EventoFormState = {
     pax_jovenes: "",
     pax_menores: "",
     pax_bebes: "",
-    organizador_externo: "",
-    comision_organizador: "",
+    tiene_organizador: "false",
+    organizador_nombre: "",
+    organizador_email: "",
+    organizador_telefono: "",
     observaciones: "",
   },
   errors: {},
@@ -100,8 +104,10 @@ export function getEventoFormStateFromEvento(
       pax_jovenes: evento.pax_jovenes?.toString() ?? "",
       pax_menores: evento.pax_menores?.toString() ?? "",
       pax_bebes: evento.pax_bebes?.toString() ?? "",
-      organizador_externo: evento.organizador_externo ?? "",
-      comision_organizador: evento.comision_organizador?.toString() ?? "",
+      tiene_organizador: evento.tiene_organizador ? "true" : "false",
+      organizador_nombre: evento.organizador_nombre ?? "",
+      organizador_email: evento.organizador_email ?? "",
+      organizador_telefono: evento.organizador_telefono ?? "",
       observaciones: evento.observaciones ?? "",
     },
     errors: {},
@@ -132,6 +138,9 @@ export function validateEventoForm(
   const fechaCarga = fields.fecha_carga.trim();
   const fechaConfirmacionPresupuesto =
     fields.fecha_confirmacion_presupuesto.trim();
+  const tieneOrganizador = fields.tiene_organizador === "true";
+  const organizadorNombre = fields.organizador_nombre.trim();
+  const organizadorEmail = fields.organizador_email.trim();
 
   if (!salonId) {
     errors.salon_id = "Selecciona un salon.";
@@ -200,11 +209,14 @@ export function validateEventoForm(
     "pax_bebes",
     errors,
   );
-  const comisionOrganizador = parseOptionalNumber(
-    fields.comision_organizador,
-    "comision_organizador",
-    errors,
-  );
+
+  if (tieneOrganizador && !organizadorNombre) {
+    errors.organizador_nombre = "Ingresa el nombre del organizador.";
+  }
+
+  if (organizadorEmail && !isValidEmail(organizadorEmail)) {
+    errors.organizador_email = "Ingresa un email valido.";
+  }
 
   if (Object.keys(errors).length > 0) {
     return {
@@ -246,8 +258,12 @@ export function validateEventoForm(
       pax_jovenes: paxJovenes,
       pax_menores: paxMenores,
       pax_bebes: paxBebes,
-      organizador_externo: nullableTrim(fields.organizador_externo),
-      comision_organizador: comisionOrganizador,
+      tiene_organizador: tieneOrganizador,
+      organizador_nombre: tieneOrganizador ? organizadorNombre : null,
+      organizador_email: tieneOrganizador ? nullableTrim(organizadorEmail) : null,
+      organizador_telefono: tieneOrganizador
+        ? nullableTrim(fields.organizador_telefono)
+        : null,
       observaciones: nullableTrim(fields.observaciones),
     },
   };
@@ -281,8 +297,11 @@ function getEventoFields(formData: FormData): EventoFormFields {
     pax_jovenes: getString(formData, "pax_jovenes"),
     pax_menores: getString(formData, "pax_menores"),
     pax_bebes: getString(formData, "pax_bebes"),
-    organizador_externo: getString(formData, "organizador_externo"),
-    comision_organizador: getString(formData, "comision_organizador"),
+    tiene_organizador:
+      formData.get("tiene_organizador") === "true" ? "true" : "false",
+    organizador_nombre: getString(formData, "organizador_nombre"),
+    organizador_email: getString(formData, "organizador_email"),
+    organizador_telefono: getString(formData, "organizador_telefono"),
     observaciones: getString(formData, "observaciones"),
   };
 }
@@ -320,27 +339,6 @@ function parseOptionalInteger(
   return numberValue;
 }
 
-function parseOptionalNumber(
-  value: string,
-  key: keyof EventoFormFields,
-  errors: EventoFormErrors,
-) {
-  const text = value.trim();
-
-  if (!text) {
-    return null;
-  }
-
-  const numberValue = Number(text);
-
-  if (!Number.isFinite(numberValue) || numberValue < 0) {
-    errors[key] = "Debe ser un numero mayor o igual a 0.";
-    return null;
-  }
-
-  return numberValue;
-}
-
 export function getTodayInputValue() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     day: "2-digit",
@@ -361,4 +359,8 @@ function isDateInputValue(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`);
 
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }

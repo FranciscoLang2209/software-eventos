@@ -191,13 +191,25 @@ export default async function EventoDetallePage({
         <CardContent>
           <dl className="grid gap-4 sm:grid-cols-2">
             <DetailItem
-              label="Organizador externo"
-              value={evento.organizador_externo}
+              label="Tiene organizador externo"
+              value={evento.tiene_organizador ? "Si" : "No"}
             />
-            <DetailItem
-              label="Comision organizador"
-              value={formatCurrency(evento.comision_organizador)}
-            />
+            {evento.tiene_organizador ? (
+              <>
+                <DetailItem
+                  label="Nombre del organizador"
+                  value={evento.organizador_nombre}
+                />
+                <DetailItem
+                  label="Email del organizador"
+                  value={evento.organizador_email}
+                />
+                <DetailItem
+                  label="Telefono del organizador"
+                  value={evento.organizador_telefono}
+                />
+              </>
+            ) : null}
             <div className="sm:col-span-2">
               <DetailItem label="Observaciones" value={evento.observaciones} />
             </div>
@@ -208,6 +220,7 @@ export default async function EventoDetallePage({
       <ValoresEventoSection
         catalogo={valores.catalogo}
         eventoId={evento.id}
+        tieneOrganizador={evento.tiene_organizador}
         monthlyPriceSuggestions={valores.monthlyPriceSuggestions}
         servicios={valores.servicios}
         totalEvento={valores.totalEvento}
@@ -254,18 +267,6 @@ function formatDate(value: string | null) {
     timeZone: "UTC",
     year: "numeric",
   }).format(new Date(`${value}T00:00:00.000Z`));
-}
-
-function formatCurrency(value: number | null) {
-  if (value === null) {
-    return null;
-  }
-
-  return new Intl.NumberFormat("es-AR", {
-    currency: "ARS",
-    maximumFractionDigits: 2,
-    style: "currency",
-  }).format(value);
 }
 
 function formatNumber(value: number | null) {

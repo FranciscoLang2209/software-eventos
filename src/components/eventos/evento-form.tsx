@@ -88,6 +88,9 @@ export function EventoForm({
   const [selectedSubtipoEvento, setSelectedSubtipoEvento] = useState(
     state.fields.subtipo_evento,
   );
+  const [selectedTieneOrganizador, setSelectedTieneOrganizador] = useState(
+    state.fields.tiene_organizador,
+  );
 
   const selectedSalon = useMemo(
     () => salones.find((salon) => salon.id === selectedSalonId),
@@ -532,23 +535,85 @@ export function EventoForm({
         <CardHeader>
           <CardTitle>Informacion comercial</CardTitle>
           <CardDescription>
-            Organizador externo, comision y observaciones iniciales.
+            Organizador externo y observaciones iniciales.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              id="organizador_externo"
-              label="Organizador externo"
-              defaultValue={state.fields.organizador_externo}
-            />
-            <NumberField
-              id="comision_organizador"
-              label="Comision organizador"
-              defaultValue={state.fields.comision_organizador}
-              error={state.errors.comision_organizador}
-              step="0.01"
-            />
+            <div>
+              <Label htmlFor="tiene_organizador">
+                ¿Tiene organizador externo?
+              </Label>
+              <Select
+                name="tiene_organizador"
+                value={selectedTieneOrganizador}
+                onValueChange={setSelectedTieneOrganizador}
+              >
+                <SelectTrigger id="tiene_organizador">
+                  <SelectValue placeholder="Seleccionar opcion" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">No</SelectItem>
+                  <SelectItem value="true">Si</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedTieneOrganizador === "true" ? (
+              <>
+                <div>
+                  <Label htmlFor="organizador_nombre">
+                    Nombre del organizador
+                  </Label>
+                  <Input
+                    id="organizador_nombre"
+                    name="organizador_nombre"
+                    type="text"
+                    required
+                    defaultValue={state.fields.organizador_nombre}
+                    aria-invalid={Boolean(state.errors.organizador_nombre)}
+                    aria-describedby={
+                      state.errors.organizador_nombre
+                        ? "organizador_nombre-error"
+                        : undefined
+                    }
+                  />
+                  {state.errors.organizador_nombre ? (
+                    <FieldError id="organizador_nombre-error">
+                      {state.errors.organizador_nombre}
+                    </FieldError>
+                  ) : null}
+                </div>
+
+                <div>
+                  <Label htmlFor="organizador_email">Email del organizador</Label>
+                  <Input
+                    id="organizador_email"
+                    name="organizador_email"
+                    type="email"
+                    defaultValue={state.fields.organizador_email}
+                    aria-invalid={Boolean(state.errors.organizador_email)}
+                    aria-describedby={
+                      state.errors.organizador_email
+                        ? "organizador_email-error"
+                        : undefined
+                    }
+                  />
+                  {state.errors.organizador_email ? (
+                    <FieldError id="organizador_email-error">
+                      {state.errors.organizador_email}
+                    </FieldError>
+                  ) : null}
+                </div>
+
+                <TextField
+                  id="organizador_telefono"
+                  label="Telefono del organizador"
+                  defaultValue={state.fields.organizador_telefono}
+                />
+              </>
+            ) : null}
+
             <div className="sm:col-span-2">
               <Label htmlFor="observaciones">Observaciones</Label>
               <Textarea
@@ -557,6 +622,17 @@ export function EventoForm({
                 rows={4}
                 defaultValue={state.fields.observaciones}
               />
+            </div>
+
+            <div className="sm:col-span-2 rounded-lg border border-slate-100 bg-slate-50/70 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-950">
+                Servicios que comisionan
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                {mode === "create"
+                  ? "Los servicios podran configurarse luego de crear el evento."
+                  : "Los servicios se configuran desde el detalle del evento."}
+              </p>
             </div>
           </div>
 

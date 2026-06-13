@@ -4,6 +4,7 @@ export type EventoServicioFormFields = {
   adicionales_monto: string;
   iva_base_imponible: string;
   iva_porcentaje: string;
+  comisiona_organizador: boolean;
   proveedor: string;
   notas: string;
 };
@@ -27,6 +28,7 @@ export type EventoServicioPayload = {
   iva_porcentaje: number;
   proveedor: string | null;
   notas: string | null;
+  comisiona_organizador: boolean;
   total_sin_iva: number;
   total_con_iva: number;
 };
@@ -62,6 +64,7 @@ export function getEmptyEventoServicioFormState(): EventoServicioFormState {
       adicionales_monto: "0",
       iva_base_imponible: "0",
       iva_porcentaje: "0",
+      comisiona_organizador: false,
       proveedor: "",
       notas: "",
     },
@@ -170,6 +173,7 @@ export function validateEventoServicioForm(formData: FormData): {
       adicionales_monto: adicionalesMonto,
       iva_base_imponible: ivaBaseImponible,
       iva_porcentaje: ivaTasa,
+      comisiona_organizador: fields.comisiona_organizador,
       notas: nullableTrim(fields.notas),
       precio_base: precioBase,
       proveedor: nullableTrim(fields.proveedor),
@@ -185,6 +189,8 @@ export function getEventoServicioFields(
 ): EventoServicioFormFields {
   return {
     adicionales_monto: getString(formData, "adicionales_monto"),
+    comisiona_organizador:
+      formData.get("comisiona_organizador") === "true",
     iva_base_imponible: getString(formData, "iva_base_imponible"),
     iva_porcentaje: getString(formData, "iva_porcentaje"),
     notas: getString(formData, "notas"),
@@ -198,6 +204,7 @@ export function getEventoServicioFieldsFromValues({
   adicionales_monto,
   iva_base_imponible,
   iva_porcentaje,
+  comisiona_organizador,
   notas,
   precio_base,
   proveedor,
@@ -206,6 +213,7 @@ export function getEventoServicioFieldsFromValues({
   adicionales_monto: number | null;
   iva_base_imponible: number | null;
   iva_porcentaje: number | null;
+  comisiona_organizador: boolean | null;
   notas: string | null;
   precio_base: number | null;
   proveedor: string | null;
@@ -213,6 +221,7 @@ export function getEventoServicioFieldsFromValues({
 }): EventoServicioFormFields {
   return {
     adicionales_monto: formatFormNumber(adicionales_monto ?? 0),
+    comisiona_organizador: comisiona_organizador ?? false,
     iva_base_imponible: formatFormNumber(iva_base_imponible ?? 0),
     iva_porcentaje: formatFormNumber(rateToPercentage(iva_porcentaje ?? 0)),
     notas: notas ?? "",

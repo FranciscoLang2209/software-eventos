@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { SubmitButton } from "@/components/salones/submit-button";
 import {
+  checkboxClassName,
   FieldError,
   FormAlert,
   Input,
@@ -34,6 +35,7 @@ type EventoServicioFormProps = {
   initialState: EventoServicioFormState;
   monthlyPriceSuggestions?: MonthlyServicePriceSuggestions;
   resetOnSuccess?: boolean;
+  tieneOrganizador: boolean;
   submitLabel: string;
   submittingLabel: string;
 };
@@ -45,6 +47,7 @@ export function EventoServicioForm({
   initialState,
   monthlyPriceSuggestions = {},
   resetOnSuccess = false,
+  tieneOrganizador,
   submitLabel,
   submittingLabel,
 }: EventoServicioFormProps) {
@@ -62,6 +65,7 @@ export function EventoServicioForm({
       formId={formId}
       monthlyPriceSuggestions={monthlyPriceSuggestions}
       state={renderedState}
+      tieneOrganizador={tieneOrganizador}
       submitLabel={submitLabel}
       submittingLabel={submittingLabel}
     />
@@ -74,6 +78,7 @@ function EventoServicioFormFields({
   formId,
   monthlyPriceSuggestions,
   state,
+  tieneOrganizador,
   submitLabel,
   submittingLabel,
 }: {
@@ -82,6 +87,7 @@ function EventoServicioFormFields({
   formId: string;
   monthlyPriceSuggestions: MonthlyServicePriceSuggestions;
   state: EventoServicioFormState;
+  tieneOrganizador: boolean;
   submitLabel: string;
   submittingLabel: string;
 }) {
@@ -285,6 +291,19 @@ function EventoServicioFormFields({
             defaultValue={state.fields.notas}
           />
         </div>
+
+        {tieneOrganizador ? (
+          <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-3 text-sm font-medium text-slate-700 transition-colors hover:border-teal-100 hover:bg-teal-50/50">
+            <input
+              name="comisiona_organizador"
+              type="checkbox"
+              value="true"
+              defaultChecked={state.fields.comisiona_organizador}
+              className={checkboxClassName}
+            />
+            Comisiona organizador
+          </label>
+        ) : null}
       </div>
 
       {state.formError ? <FormAlert>{state.formError}</FormAlert> : null}
@@ -308,6 +327,7 @@ function getResetSuccessState(
       adicionales_monto: "0",
       iva_base_imponible: "0",
       iva_porcentaje: "0",
+      comisiona_organizador: false,
       notas: "",
       precio_base: "",
       proveedor: "",

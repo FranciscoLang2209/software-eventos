@@ -14,6 +14,7 @@ import { logSupabaseError } from "@/lib/supabase/errors";
 type AuthorizedEvento = {
   id: string;
   salon_id: string;
+  tiene_organizador: boolean;
 };
 
 export type DeleteEventoServicioState = {
@@ -58,6 +59,8 @@ export async function createEventoServicioAction(
     .from("evento_servicios")
     .insert({
       adicionales_monto: payload.adicionales_monto,
+      comisiona_organizador:
+        evento.tiene_organizador && payload.comisiona_organizador,
       evento_id: evento.id,
       iva_base_imponible: payload.iva_base_imponible,
       iva_porcentaje: payload.iva_porcentaje,
@@ -126,6 +129,8 @@ export async function updateEventoServicioAction(
     .from("evento_servicios")
     .update({
       adicionales_monto: payload.adicionales_monto,
+      comisiona_organizador:
+        evento.tiene_organizador && payload.comisiona_organizador,
       iva_base_imponible: payload.iva_base_imponible,
       iva_porcentaje: payload.iva_porcentaje,
       notas: payload.notas,
@@ -265,7 +270,7 @@ async function getAuthorizedActiveEvento(
   const supabase = await createClient();
   const { data: evento, error: eventoError } = await supabase
     .from("eventos")
-    .select("id, salon_id")
+    .select("id, salon_id, tiene_organizador")
     .eq("id", eventoId)
     .is("deleted_at", null)
     .maybeSingle();

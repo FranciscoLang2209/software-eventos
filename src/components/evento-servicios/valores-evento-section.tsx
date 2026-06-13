@@ -30,6 +30,7 @@ type ValoresEventoSectionProps = {
   eventoId: string;
   monthlyPriceSuggestions: EventoServicioMonthlyPriceSuggestions;
   servicios: EventoServicioItem[];
+  tieneOrganizador: boolean;
   totalEvento: number;
 };
 
@@ -38,8 +39,13 @@ export function ValoresEventoSection({
   eventoId,
   monthlyPriceSuggestions,
   servicios,
+  tieneOrganizador,
   totalEvento,
 }: ValoresEventoSectionProps) {
+  const gridClassName = tieneOrganizador
+    ? "xl:grid-cols-[1.3fr_0.9fr_0.7fr_repeat(7,minmax(0,0.75fr))_auto]"
+    : "xl:grid-cols-[1.3fr_0.9fr_repeat(7,minmax(0,0.75fr))_auto]";
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
@@ -59,12 +65,26 @@ export function ValoresEventoSection({
         </div>
       </CardHeader>
       <CardContent className="space-y-8">
+        {tieneOrganizador ? (
+          <div>
+            <h3 className="text-sm font-semibold text-slate-950">
+              Servicios que comisionan
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Marca los servicios que participan en la comision del organizador.
+            </p>
+          </div>
+        ) : null}
+
         <div className="rounded-lg border border-slate-100 bg-white">
           {servicios.length > 0 ? (
             <div className="divide-y divide-slate-100">
-              <div className="hidden grid-cols-[1.3fr_0.9fr_repeat(7,minmax(0,0.75fr))_auto] gap-4 bg-slate-50/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 xl:grid">
+              <div
+                className={`hidden gap-4 bg-slate-50/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 xl:grid ${gridClassName}`}
+              >
                 <div>Servicio</div>
                 <div>Proveedor</div>
+                {tieneOrganizador ? <div>Comisiona</div> : null}
                 <div className="text-right">Base</div>
                 <div className="text-right">Adic.</div>
                 <div className="text-right">Base IVA</div>
@@ -77,7 +97,9 @@ export function ValoresEventoSection({
               {servicios.map((servicio) => (
                 <details key={servicio.id} className="group">
                   <summary className="list-none px-5 py-5 marker:hidden">
-                    <div className="grid gap-4 xl:grid-cols-[1.3fr_0.9fr_repeat(7,minmax(0,0.75fr))_auto] xl:items-start">
+                    <div
+                      className={`grid gap-4 xl:items-start ${gridClassName}`}
+                    >
                       <div>
                         <div className="font-medium text-slate-950">
                           {servicio.servicios_catalogo?.nombre ??
@@ -100,6 +122,12 @@ export function ValoresEventoSection({
                         label="Proveedor"
                         value={servicio.proveedor ?? "-"}
                       />
+                      {tieneOrganizador ? (
+                        <ValueItem
+                          label="Comisiona"
+                          value={servicio.comisiona_organizador ? "Si" : "No"}
+                        />
+                      ) : null}
                       <ValueItem
                         align="right"
                         label="Base"
@@ -170,6 +198,7 @@ export function ValoresEventoSection({
                         getEventoServicioFieldsFromValues(servicio),
                       )}
                       monthlyPriceSuggestions={monthlyPriceSuggestions}
+                      tieneOrganizador={tieneOrganizador}
                       submitLabel="Guardar cambios"
                       submittingLabel="Guardando..."
                     />
@@ -206,6 +235,7 @@ export function ValoresEventoSection({
               initialState={getEmptyEventoServicioFormState()}
               monthlyPriceSuggestions={monthlyPriceSuggestions}
               resetOnSuccess
+              tieneOrganizador={tieneOrganizador}
               submitLabel="Agregar servicio"
               submittingLabel="Agregando..."
             />
