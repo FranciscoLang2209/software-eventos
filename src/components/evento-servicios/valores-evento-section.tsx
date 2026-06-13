@@ -62,12 +62,13 @@ export function ValoresEventoSection({
         <div className="rounded-lg border border-slate-100 bg-white">
           {servicios.length > 0 ? (
             <div className="divide-y divide-slate-100">
-              <div className="hidden grid-cols-[1.4fr_1fr_repeat(6,minmax(0,0.8fr))_auto] gap-4 bg-slate-50/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 xl:grid">
+              <div className="hidden grid-cols-[1.3fr_0.9fr_repeat(7,minmax(0,0.75fr))_auto] gap-4 bg-slate-50/80 px-5 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 xl:grid">
                 <div>Servicio</div>
                 <div>Proveedor</div>
                 <div className="text-right">Base</div>
                 <div className="text-right">Adic.</div>
-                <div className="text-right">IVA</div>
+                <div className="text-right">Base IVA</div>
+                <div className="text-right">IVA %</div>
                 <div className="text-right">Total</div>
                 <div className="text-right">Pagado</div>
                 <div className="text-right">Saldo</div>
@@ -76,7 +77,7 @@ export function ValoresEventoSection({
               {servicios.map((servicio) => (
                 <details key={servicio.id} className="group">
                   <summary className="list-none px-5 py-5 marker:hidden">
-                    <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr_repeat(6,minmax(0,0.8fr))_auto] xl:items-start">
+                    <div className="grid gap-4 xl:grid-cols-[1.3fr_0.9fr_repeat(7,minmax(0,0.75fr))_auto] xl:items-start">
                       <div>
                         <div className="font-medium text-slate-950">
                           {servicio.servicios_catalogo?.nombre ??
@@ -111,7 +112,14 @@ export function ValoresEventoSection({
                       />
                       <ValueItem
                         align="right"
-                        label="IVA"
+                        label="Base IVA"
+                        value={formatCurrencyValue(
+                          servicio.iva_base_imponible,
+                        )}
+                      />
+                      <ValueItem
+                        align="right"
+                        label="IVA %"
                         value={formatPercentage(servicio.iva_porcentaje)}
                       />
                       <ValueItem
@@ -252,5 +260,5 @@ function formatCurrency(value: number) {
 function formatPercentage(value: number | null) {
   return `${new Intl.NumberFormat("es-AR", {
     maximumFractionDigits: 2,
-  }).format(value ?? 0)}%`;
+  }).format((value ?? 0) * 100)}%`;
 }

@@ -370,6 +370,7 @@ export type Database = {
           created_at: string
           evento_id: string
           id: string
+          iva_base_imponible: number
           iva_porcentaje: number | null
           notas: string | null
           precio_base: number | null
@@ -386,15 +387,16 @@ export type Database = {
           created_at?: string
           evento_id: string
           id?: string
+          iva_base_imponible?: number
           iva_porcentaje?: number | null
           notas?: string | null
           precio_base?: number | null
           proveedor?: string | null
-          saldo_pendiente?: number | null
+          saldo_pendiente?: never
           servicio_id: string
-          total_con_iva?: number | null
+          total_con_iva?: never
           total_pagado?: number | null
-          total_sin_iva?: number | null
+          total_sin_iva?: never
           updated_at?: string
         }
         Update: {
@@ -402,15 +404,16 @@ export type Database = {
           created_at?: string
           evento_id?: string
           id?: string
+          iva_base_imponible?: number
           iva_porcentaje?: number | null
           notas?: string | null
           precio_base?: number | null
           proveedor?: string | null
-          saldo_pendiente?: number | null
+          saldo_pendiente?: never
           servicio_id?: string
-          total_con_iva?: number | null
+          total_con_iva?: never
           total_pagado?: number | null
-          total_sin_iva?: number | null
+          total_sin_iva?: never
           updated_at?: string
         }
         Relationships: [

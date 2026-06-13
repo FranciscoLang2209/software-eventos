@@ -59,15 +59,13 @@ export async function createEventoServicioAction(
     .insert({
       adicionales_monto: payload.adicionales_monto,
       evento_id: evento.id,
+      iva_base_imponible: payload.iva_base_imponible,
       iva_porcentaje: payload.iva_porcentaje,
       notas: payload.notas,
       precio_base: payload.precio_base,
       proveedor: payload.proveedor,
-      saldo_pendiente: payload.total_con_iva,
       servicio_id: payload.servicio_id,
-      total_con_iva: payload.total_con_iva,
       total_pagado: 0,
-      total_sin_iva: payload.total_sin_iva,
     })
     .select("id")
     .maybeSingle();
@@ -128,15 +126,13 @@ export async function updateEventoServicioAction(
     .from("evento_servicios")
     .update({
       adicionales_monto: payload.adicionales_monto,
+      iva_base_imponible: payload.iva_base_imponible,
       iva_porcentaje: payload.iva_porcentaje,
       notas: payload.notas,
       precio_base: payload.precio_base,
       proveedor: payload.proveedor,
-      saldo_pendiente: roundMoney(payload.total_con_iva - totalPagado),
       servicio_id: payload.servicio_id,
-      total_con_iva: payload.total_con_iva,
       total_pagado: totalPagado,
-      total_sin_iva: payload.total_sin_iva,
       updated_at: new Date().toISOString(),
     })
     .eq("id", eventoServicioId)
@@ -232,7 +228,7 @@ export async function recalculateEventoServicioTotals(
   const supabase = await createClient();
   const { data: servicio, error: servicioError } = await supabase
     .from("evento_servicios")
-    .select("id, total_con_iva")
+    .select("id")
     .eq("id", eventoServicioId)
     .maybeSingle();
 
@@ -252,7 +248,6 @@ export async function recalculateEventoServicioTotals(
   const { error } = await supabase
     .from("evento_servicios")
     .update({
-      saldo_pendiente: roundMoney(toMoneyNumber(servicio.total_con_iva) - totalPagado),
       total_pagado: totalPagado,
       updated_at: new Date().toISOString(),
     })

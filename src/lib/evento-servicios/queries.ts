@@ -17,6 +17,7 @@ export type EventoServicioItem = Pick<
   | "created_at"
   | "evento_id"
   | "id"
+  | "iva_base_imponible"
   | "iva_porcentaje"
   | "notas"
   | "precio_base"
@@ -68,7 +69,7 @@ export async function getEventoValores(eventoId: string) {
     supabase
       .from("evento_servicios")
       .select(
-        "id, evento_id, servicio_id, precio_base, adicionales_monto, iva_porcentaje, total_sin_iva, total_con_iva, proveedor, total_pagado, saldo_pendiente, notas, created_at, servicios_catalogo(nombre, categoria, descripcion)",
+        "id, evento_id, servicio_id, precio_base, adicionales_monto, iva_base_imponible, iva_porcentaje, total_sin_iva, total_con_iva, proveedor, total_pagado, saldo_pendiente, notas, created_at, servicios_catalogo(nombre, categoria, descripcion)",
       )
       .eq("evento_id", eventoId)
       .order("created_at", { ascending: true }),

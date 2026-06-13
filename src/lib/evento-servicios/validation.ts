@@ -2,6 +2,7 @@ export type EventoServicioFormFields = {
   servicio_id: string;
   precio_base: string;
   adicionales_monto: string;
+  iva_base_imponible: string;
   iva_porcentaje: string;
   proveedor: string;
   notas: string;
@@ -22,6 +23,7 @@ export type EventoServicioPayload = {
   servicio_id: string;
   precio_base: number;
   adicionales_monto: number;
+  iva_base_imponible: number;
   iva_porcentaje: number;
   proveedor: string | null;
   notas: string | null;
@@ -29,17 +31,22 @@ export type EventoServicioPayload = {
   total_con_iva: number;
 };
 
+const IVA_RATE_SCALE = 4;
+
 export function calculateEventoServicioTotals({
   adicionalesMonto,
+  ivaBaseImponible,
   ivaPorcentaje,
   precioBase,
 }: {
   adicionalesMonto: number;
+  ivaBaseImponible: number;
   ivaPorcentaje: number;
   precioBase: number;
 }) {
   const totalSinIva = roundMoney(precioBase + adicionalesMonto);
-  const totalConIva = roundMoney(totalSinIva * (1 + ivaPorcentaje / 100));
+  const ivaMonto = roundMoney(ivaBaseImponible * (ivaPorcentaje / 100));
+  const totalConIva = roundMoney(totalSinIva + ivaMonto);
 
   return {
     totalConIva,
@@ -53,6 +60,7 @@ export function getEmptyEventoServicioFormState(): EventoServicioFormState {
       servicio_id: "",
       precio_base: "",
       adicionales_monto: "0",
+      iva_base_imponible: "0",
       iva_porcentaje: "0",
       proveedor: "",
       notas: "",
@@ -92,6 +100,11 @@ export function validateEventoServicioForm(formData: FormData): {
     "adicionales_monto",
     errors,
   );
+  const ivaBaseImponible = parseOptionalMoney(
+    fields.iva_base_imponible,
+    "iva_base_imponible",
+    errors,
+  );
   const ivaPorcentaje = parseOptionalPercentage(
     fields.iva_porcentaje,
     errors,
@@ -110,10 +123,21 @@ export function validateEventoServicioForm(formData: FormData): {
   }
 
   if (
+    precioBase !== null &&
+    adicionalesMonto !== null &&
+    ivaBaseImponible !== null &&
+    ivaBaseImponible > precioBase + adicionalesMonto
+  ) {
+    errors.iva_base_imponible =
+      "La base imponible de IVA no puede superar el subtotal.";
+  }
+
+  if (
     Object.keys(errors).length > 0 ||
     !servicioId ||
     precioBase === null ||
     adicionalesMonto === null ||
+    ivaBaseImponible === null ||
     ivaPorcentaje === null
   ) {
     return {
@@ -129,9 +153,11 @@ export function validateEventoServicioForm(formData: FormData): {
 
   const { totalConIva, totalSinIva } = calculateEventoServicioTotals({
     adicionalesMonto,
+    ivaBaseImponible,
     ivaPorcentaje,
     precioBase,
   });
+  const ivaTasa = percentageToRate(ivaPorcentaje);
 
   return {
     state: {
@@ -142,7 +168,8 @@ export function validateEventoServicioForm(formData: FormData): {
     },
     payload: {
       adicionales_monto: adicionalesMonto,
-      iva_porcentaje: ivaPorcentaje,
+      iva_base_imponible: ivaBaseImponible,
+      iva_porcentaje: ivaTasa,
       notas: nullableTrim(fields.notas),
       precio_base: precioBase,
       proveedor: nullableTrim(fields.proveedor),
@@ -158,6 +185,7 @@ export function getEventoServicioFields(
 ): EventoServicioFormFields {
   return {
     adicionales_monto: getString(formData, "adicionales_monto"),
+    iva_base_imponible: getString(formData, "iva_base_imponible"),
     iva_porcentaje: getString(formData, "iva_porcentaje"),
     notas: getString(formData, "notas"),
     precio_base: getString(formData, "precio_base"),
@@ -168,6 +196,7 @@ export function getEventoServicioFields(
 
 export function getEventoServicioFieldsFromValues({
   adicionales_monto,
+  iva_base_imponible,
   iva_porcentaje,
   notas,
   precio_base,
@@ -175,6 +204,7 @@ export function getEventoServicioFieldsFromValues({
   servicio_id,
 }: {
   adicionales_monto: number | null;
+  iva_base_imponible: number | null;
   iva_porcentaje: number | null;
   notas: string | null;
   precio_base: number | null;
@@ -183,7 +213,8 @@ export function getEventoServicioFieldsFromValues({
 }): EventoServicioFormFields {
   return {
     adicionales_monto: formatFormNumber(adicionales_monto ?? 0),
-    iva_porcentaje: formatFormNumber(iva_porcentaje ?? 0),
+    iva_base_imponible: formatFormNumber(iva_base_imponible ?? 0),
+    iva_porcentaje: formatFormNumber(rateToPercentage(iva_porcentaje ?? 0)),
     notas: notas ?? "",
     precio_base: precio_base === null ? "" : formatFormNumber(precio_base),
     proveedor: proveedor ?? "",
@@ -216,7 +247,7 @@ function parseRequiredMoney(
 
 function parseOptionalMoney(
   value: string,
-  field: "adicionales_monto",
+  field: "adicionales_monto" | "iva_base_imponible",
   errors: EventoServicioFormErrors,
 ) {
   const text = normalizeNumberText(value);
@@ -273,6 +304,20 @@ function nullableTrim(value: string) {
 
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function percentageToRate(value: number) {
+  return roundToScale(value / 100, IVA_RATE_SCALE);
+}
+
+function rateToPercentage(value: number) {
+  return roundMoney(value * 100);
+}
+
+function roundToScale(value: number, scale: number) {
+  const multiplier = 10 ** scale;
+
+  return Math.round((value + Number.EPSILON) * multiplier) / multiplier;
 }
 
 function formatFormNumber(value: number) {

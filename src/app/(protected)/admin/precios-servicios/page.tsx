@@ -234,5 +234,5 @@ function formatCurrency(value: number, moneda: Enums<"moneda">) {
 function formatPercentage(value: number) {
   return `${new Intl.NumberFormat("es-AR", {
     maximumFractionDigits: 2,
-  }).format(value)}%`;
+  }).format(value * 100)}%`;
 }

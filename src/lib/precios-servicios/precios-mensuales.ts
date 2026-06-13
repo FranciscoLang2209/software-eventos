@@ -1,6 +1,5 @@
 import * as XLSX from "xlsx";
 import { createClient } from "@/lib/supabase/server";
-import { calculateEventoServicioTotals } from "@/lib/evento-servicios/validation";
 import { logSupabaseError } from "@/lib/supabase/errors";
 import type { Enums, Tables, TablesInsert } from "@/types/database.types";
 
@@ -283,23 +282,15 @@ export async function applyMonthlyServicePricesToEvento({
       continue;
     }
 
-    const { totalConIva, totalSinIva } = calculateEventoServicioTotals({
-      adicionalesMonto: 0,
-      ivaPorcentaje: precio.iva_porcentaje,
-      precioBase: precio.precio_base,
-    });
-
     inserts.push({
       adicionales_monto: 0,
       evento_id: eventoId,
+      iva_base_imponible: precio.precio_base,
       iva_porcentaje: precio.iva_porcentaje,
       notas: `Autocompletado desde precios mensuales (${precio.periodLabel}).`,
       precio_base: precio.precio_base,
-      saldo_pendiente: totalConIva,
       servicio_id: servicio.id,
-      total_con_iva: totalConIva,
       total_pagado: 0,
-      total_sin_iva: totalSinIva,
     });
   }
 
@@ -429,7 +420,7 @@ function validateImportRows(
     const month = parseMonth(getRequiredCell(row, "mes"));
     const year = parseYear(getRequiredCell(row, "ano"));
     const precioBase = parseMoney(row.precio_base);
-    const ivaPorcentaje = parsePercentage(row.iva_porcentaje);
+    const ivaPorcentaje = parsePercentageRate(row.iva_porcentaje);
     const moneda = parseMoneda(row.moneda);
     const salonNombre = asText(row.salon);
     const salon = salonNombre ? salonesByName.get(normalizeText(salonNombre)) : null;
@@ -692,6 +683,16 @@ function parsePercentage(value: unknown) {
   }
 
   return roundMoney(numberValue);
+}
+
+function parsePercentageRate(value: unknown) {
+  const percentage = parsePercentage(value);
+
+  return percentage === null ? null : roundRate(percentage / 100);
+}
+
+function roundRate(value: number) {
+  return Math.round((value + Number.EPSILON) * 10000) / 10000;
 }
 
 function parseMoneda(value: unknown): Enums<"moneda"> | null {
