@@ -29,6 +29,11 @@ import {
 } from "@/components/ui/table";
 import {
   getReportesGenerales,
+  type ReportesAnticipacionAtipicoRow,
+  type ReportesAnticipacionDistribucionRow,
+  type ReportesAnticipacionMesRow,
+  type ReportesAnticipacionSalonRow,
+  type ReportesAnticipacionTipoRow,
   type ReportesFinancierosEventoRow,
   type ReportesFinancierosMesRow,
   type ReportesGeneralesRow,
@@ -39,11 +44,37 @@ type ReportesPageProps = {
   searchParams?: Promise<ReportesGeneralesSearchParams>;
 };
 
+type ReportesTab = "anticipacion" | "financieros" | "resumen";
+
+const REPORTES_TABS: {
+  description: string;
+  id: ReportesTab;
+  label: string;
+}[] = [
+  {
+    description: "Metricas operativas",
+    id: "resumen",
+    label: "Resumen",
+  },
+  {
+    description: "Reserva vs evento",
+    id: "anticipacion",
+    label: "Anticipacion",
+  },
+  {
+    description: "Ingresos y egresos",
+    id: "financieros",
+    label: "Financieros",
+  },
+];
+
 export default async function ReportesPage({
   searchParams,
 }: ReportesPageProps) {
   const params = searchParams ? await searchParams : {};
   const reportes = await getReportesGenerales(params);
+  const anticipacion = reportes.anticipacion;
+  const activeTab = getActiveTab(params);
   const isAdmin = reportes.profile.rol === "admin";
   const financieros = reportes.financieros;
 
@@ -65,6 +96,7 @@ export default async function ReportesPage({
         </CardHeader>
         <CardContent>
           <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+            <input type="hidden" name="tab" value={activeTab} />
             <div>
               <Label htmlFor="desde">Desde</Label>
               <DatePickerField
@@ -160,7 +192,10 @@ export default async function ReportesPage({
         </CardContent>
       </Card>
 
-      <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <ReportesTabs activeTab={activeTab} params={params} />
+
+      {activeTab === "resumen" ? (
+        <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <SummaryCard
           label="Eventos"
           value={formatNumber(reportes.metrics.eventosTotal)}
@@ -202,9 +237,92 @@ export default async function ReportesPage({
           value={formatCurrency(reportes.metrics.garantiasRegistradas)}
           helper="Pagos marcados como garantia"
         />
-      </dl>
+        </dl>
+      ) : null}
 
-      <section className="space-y-6">
+      {activeTab === "anticipacion" ? (
+        <section className="space-y-6">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-[0.16em] text-teal-700">
+            Anticipacion
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+            Reserva vs fecha del evento
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+            Dias entre la fecha de contrato y la fecha del evento. Los eventos
+            sin contrato o con fechas inconsistentes se controlan aparte y no
+            entran en el promedio principal.
+          </p>
+        </div>
+
+        <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            label="Anticipacion promedio"
+            value={formatNullableDays(
+              anticipacion.metricas.anticipacion_promedio,
+            )}
+            helper="Solo eventos con fechas validas"
+          />
+          <SummaryCard
+            label="Anticipacion minima"
+            value={formatNullableDays(anticipacion.metricas.anticipacion_minima)}
+            helper="Menor cantidad de dias valida"
+          />
+          <SummaryCard
+            label="Anticipacion maxima"
+            value={formatNullableDays(anticipacion.metricas.anticipacion_maxima)}
+            helper="Mayor cantidad de dias valida"
+          />
+          <SummaryCard
+            label="Mediana"
+            value={formatNullableDays(anticipacion.metricas.anticipacion_mediana)}
+            helper="Punto medio de anticipacion"
+          />
+          <SummaryCard
+            label="Eventos analizados"
+            value={formatNumber(anticipacion.metricas.eventos_analizados)}
+            helper="Incluidos en metricas principales"
+          />
+          <SummaryCard
+            label="Sin fecha de contrato"
+            value={formatNumber(
+              anticipacion.metricas.eventos_sin_fecha_contrato,
+            )}
+            helper="Excluidos del promedio"
+            valueClassName={
+              anticipacion.metricas.eventos_sin_fecha_contrato > 0
+                ? "text-amber-700"
+                : undefined
+            }
+          />
+          <SummaryCard
+            label="Fechas inconsistentes"
+            value={formatNumber(
+              anticipacion.metricas.eventos_fecha_inconsistente,
+            )}
+            helper="Contrato posterior o fecha invalida"
+            valueClassName={
+              anticipacion.metricas.eventos_fecha_inconsistente > 0
+                ? "text-red-700"
+                : undefined
+            }
+          />
+        </dl>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <AnticipacionDistribucionTable rows={anticipacion.distribucion} />
+          <AnticipacionMensualTable rows={anticipacion.evolucionMensual} />
+          <AnticipacionSalonTable rows={anticipacion.porSalon} />
+          <AnticipacionTipoTable rows={anticipacion.porTipoEvento} />
+        </div>
+
+        <AnticipacionAtipicosTable rows={anticipacion.atipicos} />
+        </section>
+      ) : null}
+
+      {activeTab === "financieros" ? (
+        <section className="space-y-6">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.16em] text-teal-700">
             Reportes financieros
@@ -274,9 +392,11 @@ export default async function ReportesPage({
         </div>
 
         <FinancialEventTable rows={financieros.porEvento} />
-      </section>
+        </section>
+      ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      {activeTab === "resumen" ? (
+        <div className="grid gap-6 xl:grid-cols-2">
         <GroupTable
           title="Eventos por salon"
           description="Cantidad de eventos activos agrupados por salon."
@@ -359,7 +479,8 @@ export default async function ReportesPage({
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -383,6 +504,355 @@ function SummaryCard({
           {value}
         </dd>
         <p className="mt-2 text-sm leading-6 text-slate-500">{helper}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReportesTabs({
+  activeTab,
+  params,
+}: {
+  activeTab: ReportesTab;
+  params: ReportesGeneralesSearchParams;
+}) {
+  return (
+    <nav
+      aria-label="Secciones de reportes"
+      className="grid gap-2 rounded-lg border border-slate-200 bg-white p-1 shadow-sm shadow-slate-950/5 md:grid-cols-3"
+    >
+      {REPORTES_TABS.map((tab) => {
+        const isActive = activeTab === tab.id;
+
+        return (
+          <Link
+            key={tab.id}
+            href={getReportesTabHref(params, tab.id)}
+            className={`rounded-md px-4 py-3 text-sm transition ${
+              isActive
+                ? "bg-teal-700 text-white shadow-sm shadow-teal-950/10"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+            }`}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <span className="block font-medium">{tab.label}</span>
+            <span
+              className={`mt-1 block text-xs ${
+                isActive ? "text-teal-50" : "text-slate-500"
+              }`}
+            >
+              {tab.description}
+            </span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function AnticipacionDistribucionTable({
+  rows,
+}: {
+  rows: ReportesAnticipacionDistribucionRow[];
+}) {
+  const hasData = rows.some((row) => row.cantidad > 0);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Distribucion por rangos</CardTitle>
+        <CardDescription>
+          Eventos validos agrupados por dias de anticipacion.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {hasData ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Rango</TableHead>
+                <TableHead className="text-right">Eventos</TableHead>
+                <TableHead className="text-right">Participacion</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-medium text-slate-950">
+                    {row.label}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.cantidad)}
+                  </TableCell>
+                  <TableCell className="min-w-40 text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-teal-600"
+                          style={{ width: `${Math.min(row.porcentaje, 100)}%` }}
+                        />
+                      </div>
+                      <span className="w-14 text-slate-600">
+                        {formatPercent(row.porcentaje)}
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay anticipacion por rangos"
+            description="No se encontraron eventos con fecha de contrato valida para los filtros actuales."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AnticipacionMensualTable({
+  rows,
+}: {
+  rows: ReportesAnticipacionMesRow[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Evolucion mensual</CardTitle>
+        <CardDescription>
+          Promedio de anticipacion agrupado por mes de fecha del evento.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mes</TableHead>
+                <TableHead className="text-right">Eventos</TableHead>
+                <TableHead className="text-right">Promedio</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.key}>
+                  <TableCell className="font-medium text-slate-950">
+                    {row.label}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.eventos_analizados)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNullableDays(row.anticipacion_promedio)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay evolucion mensual"
+            description="No se encontraron eventos validos para los filtros actuales."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AnticipacionSalonTable({
+  rows,
+}: {
+  rows: ReportesAnticipacionSalonRow[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Anticipacion por salon</CardTitle>
+        <CardDescription>
+          Eventos del periodo por salon, con fechas validas y atipicos.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Salon</TableHead>
+                <TableHead className="text-right">Eventos</TableHead>
+                <TableHead className="text-right">Analizados</TableHead>
+                <TableHead className="text-right">Promedio</TableHead>
+                <TableHead className="text-right">Min</TableHead>
+                <TableHead className="text-right">Max</TableHead>
+                <TableHead className="text-right">Sin contrato</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-medium text-slate-950">
+                    {row.label}
+                    {row.eventos_fecha_inconsistente > 0 ? (
+                      <p className="mt-1 text-sm text-red-700">
+                        {formatNumber(row.eventos_fecha_inconsistente)} con
+                        fechas inconsistentes
+                      </p>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.eventos)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.eventos_analizados)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNullableDays(row.anticipacion_promedio)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNullableDays(row.anticipacion_minima)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNullableDays(row.anticipacion_maxima)}
+                  </TableCell>
+                  <TableCell className="text-right text-amber-700">
+                    {formatNumber(row.eventos_sin_fecha_contrato)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay anticipacion por salon"
+            description="No se encontraron eventos activos para los filtros actuales."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AnticipacionTipoTable({
+  rows,
+}: {
+  rows: ReportesAnticipacionTipoRow[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Anticipacion por tipo</CardTitle>
+        <CardDescription>
+          Promedio por tipo de evento para registros con fechas validas.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tipo</TableHead>
+                <TableHead className="text-right">Eventos</TableHead>
+                <TableHead className="text-right">Promedio</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-medium text-slate-950">
+                    {row.label}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.eventos_analizados)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNullableDays(row.anticipacion_promedio)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay anticipacion por tipo"
+            description="No se encontraron eventos validos para agrupar por tipo."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AnticipacionAtipicosTable({
+  rows,
+}: {
+  rows: ReportesAnticipacionAtipicoRow[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Eventos con datos atipicos</CardTitle>
+        <CardDescription>
+          Registros excluidos del promedio por falta de contrato o fechas
+          inconsistentes.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Evento</TableHead>
+                <TableHead>Salon</TableHead>
+                <TableHead>Contrato</TableHead>
+                <TableHead>Fecha evento</TableHead>
+                <TableHead className="text-right">Dias</TableHead>
+                <TableHead>Motivo</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <Link
+                      href={`/eventos/${row.id}`}
+                      className="font-medium text-slate-950 transition hover:text-teal-700"
+                    >
+                      {row.cliente}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-slate-600">{row.salon}</TableCell>
+                  <TableCell className="whitespace-nowrap text-slate-600">
+                    {row.fecha_contrato ? formatDate(row.fecha_contrato) : "-"}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-slate-600">
+                    {formatDate(row.fecha_evento)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNullableDays(row.dias_anticipacion)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        row.motivo === "fecha_inconsistente"
+                          ? "danger"
+                          : "warning"
+                      }
+                    >
+                      {getAnticipacionMotivoLabel(row.motivo)}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay datos atipicos"
+            description="Todos los eventos encontrados tienen fechas de contrato y evento consistentes."
+          />
+        )}
       </CardContent>
     </Card>
   );
@@ -654,6 +1124,43 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function getActiveTab(params: ReportesGeneralesSearchParams): ReportesTab {
+  const tab = getSingleParamValue(params.tab);
+
+  return isReportesTab(tab) ? tab : "resumen";
+}
+
+function getReportesTabHref(
+  params: ReportesGeneralesSearchParams,
+  tab: ReportesTab,
+) {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "tab") {
+      continue;
+    }
+
+    const singleValue = getSingleParamValue(value);
+
+    if (singleValue) {
+      query.set(key, singleValue);
+    }
+  }
+
+  query.set("tab", tab);
+
+  return `/reportes?${query.toString()}`;
+}
+
+function getSingleParamValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function isReportesTab(value: string | undefined): value is ReportesTab {
+  return REPORTES_TABS.some((tab) => tab.id === value);
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",
@@ -665,6 +1172,14 @@ function formatDate(value: string) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("es-AR").format(value);
+}
+
+function formatNullableDays(value: number | null) {
+  if (value === null) {
+    return "-";
+  }
+
+  return `${formatNumber(value)} ${value === 1 ? "dia" : "dias"}`;
 }
 
 function formatPercent(value: number | null) {
@@ -708,4 +1223,15 @@ function getEstadoVariant(estado: string) {
   }
 
   return "neutral";
+}
+
+function getAnticipacionMotivoLabel(
+  motivo: ReportesAnticipacionAtipicoRow["motivo"],
+) {
+  const labels: Record<ReportesAnticipacionAtipicoRow["motivo"], string> = {
+    fecha_inconsistente: "Fecha inconsistente",
+    sin_fecha_contrato: "Sin fecha de contrato",
+  };
+
+  return labels[motivo];
 }

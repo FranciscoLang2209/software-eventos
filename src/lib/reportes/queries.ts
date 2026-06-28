@@ -76,6 +76,68 @@ export type ReportesFinancierosData = {
   porSalon: ReportesFinancierosSalonRow[];
 };
 
+export type ReportesAnticipacionMetricas = {
+  anticipacion_maxima: number | null;
+  anticipacion_mediana: number | null;
+  anticipacion_minima: number | null;
+  anticipacion_promedio: number | null;
+  eventos_analizados: number;
+  eventos_fecha_inconsistente: number;
+  eventos_sin_fecha_contrato: number;
+};
+
+export type ReportesAnticipacionDistribucionRow = {
+  cantidad: number;
+  id: string;
+  label: string;
+  porcentaje: number;
+};
+
+export type ReportesAnticipacionSalonRow = {
+  anticipacion_maxima: number | null;
+  anticipacion_minima: number | null;
+  anticipacion_promedio: number | null;
+  eventos: number;
+  eventos_analizados: number;
+  eventos_fecha_inconsistente: number;
+  eventos_sin_fecha_contrato: number;
+  id: string;
+  label: string;
+};
+
+export type ReportesAnticipacionTipoRow = {
+  anticipacion_promedio: number | null;
+  eventos_analizados: number;
+  id: string;
+  label: string;
+};
+
+export type ReportesAnticipacionAtipicoRow = {
+  cliente: string;
+  dias_anticipacion: number | null;
+  fecha_contrato: string | null;
+  fecha_evento: string;
+  id: string;
+  motivo: "fecha_inconsistente" | "sin_fecha_contrato";
+  salon: string;
+};
+
+export type ReportesAnticipacionMesRow = {
+  anticipacion_promedio: number | null;
+  eventos_analizados: number;
+  key: string;
+  label: string;
+};
+
+export type ReportesAnticipacionData = {
+  atipicos: ReportesAnticipacionAtipicoRow[];
+  distribucion: ReportesAnticipacionDistribucionRow[];
+  evolucionMensual: ReportesAnticipacionMesRow[];
+  metricas: ReportesAnticipacionMetricas;
+  porSalon: ReportesAnticipacionSalonRow[];
+  porTipoEvento: ReportesAnticipacionTipoRow[];
+};
+
 export type ReportesGeneralesPendiente = {
   cliente: string;
   fechaEvento: string;
@@ -87,6 +149,7 @@ export type ReportesGeneralesPendiente = {
 };
 
 export type ReportesGeneralesData = {
+  anticipacion: ReportesAnticipacionData;
   filters: ReportesGeneralesFilters;
   metrics: {
     balanceSimple: number;
@@ -114,10 +177,12 @@ type ReporteEvento = Pick<
   Tables<"eventos">,
   | "cliente_nombre"
   | "estado"
+  | "fecha_contrato"
   | "fecha_evento"
   | "id"
   | "nombre_evento"
   | "salon_id"
+  | "tipo_evento"
   | "vendedor_id"
 > & {
   salones: Pick<Tables<"salones">, "nombre"> | null;
@@ -173,6 +238,14 @@ const ESTADOS_EVENTO: EstadoEvento[] = [
   "realizado",
   "cancelado",
 ];
+
+const ANTICIPACION_RANGOS = [
+  { id: "0-30", label: "0 a 30 dias", max: 30, min: 0 },
+  { id: "31-60", label: "31 a 60 dias", max: 60, min: 31 },
+  { id: "61-90", label: "61 a 90 dias", max: 90, min: 61 },
+  { id: "91-180", label: "91 a 180 dias", max: 180, min: 91 },
+  { id: "180-plus", label: "Mas de 180 dias", max: null, min: 181 },
+] as const;
 
 export async function getReportesGenerales(
   searchParams: ReportesGeneralesSearchParams = {},
@@ -240,6 +313,7 @@ export async function getReportesGenerales(
   );
 
   return {
+    anticipacion: buildReportesAnticipacion(eventos),
     filters,
     metrics: {
       balanceSimple: roundMoney(totalIngresos - totalEgresos),
@@ -361,7 +435,7 @@ async function getEventosReporte({
   const query = supabase
     .from("eventos")
     .select(
-      "id, cliente_nombre, estado, fecha_evento, nombre_evento, salon_id, vendedor_id, salones(nombre), usuarios(full_name, email)",
+      "id, cliente_nombre, estado, fecha_contrato, fecha_evento, nombre_evento, salon_id, tipo_evento, vendedor_id, salones(nombre), usuarios(full_name, email)",
     )
     .is("deleted_at", null)
     .order("fecha_evento", { ascending: true });
@@ -585,6 +659,236 @@ function getEventosPendientes(
     .filter((evento) => evento.fechaEvento >= today && evento.saldoPendiente > 0)
     .sort((a, b) => a.fechaEvento.localeCompare(b.fechaEvento))
     .slice(0, 8);
+}
+
+function buildReportesAnticipacion(
+  eventos: ReporteEvento[],
+): ReportesAnticipacionData {
+  const rows = eventos.map(getAnticipacionEventoRow);
+  const validRows = rows.filter(
+    (row) => row.motivo === null && row.dias_anticipacion !== null,
+  );
+  const dias = validRows.map((row) => row.dias_anticipacion as number);
+
+  return {
+    atipicos: rows
+      .filter((row) => row.motivo !== null)
+      .map((row) => ({
+        cliente: row.cliente,
+        dias_anticipacion: row.dias_anticipacion,
+        fecha_contrato: row.fecha_contrato,
+        fecha_evento: row.fecha_evento,
+        id: row.id,
+        motivo: row.motivo as ReportesAnticipacionAtipicoRow["motivo"],
+        salon: row.salon,
+      }))
+      .sort((a, b) => a.fecha_evento.localeCompare(b.fecha_evento)),
+    distribucion: buildAnticipacionDistribucion(dias),
+    evolucionMensual: buildAnticipacionMensual(validRows),
+    metricas: {
+      anticipacion_maxima: getMax(dias),
+      anticipacion_mediana: getMedian(dias),
+      anticipacion_minima: getMin(dias),
+      anticipacion_promedio: getAverage(dias),
+      eventos_analizados: validRows.length,
+      eventos_fecha_inconsistente: rows.filter(
+        (row) => row.motivo === "fecha_inconsistente",
+      ).length,
+      eventos_sin_fecha_contrato: rows.filter(
+        (row) => row.motivo === "sin_fecha_contrato",
+      ).length,
+    },
+    porSalon: buildAnticipacionPorSalon(rows),
+    porTipoEvento: buildAnticipacionPorTipo(validRows),
+  };
+}
+
+type AnticipacionEventoRow = {
+  cliente: string;
+  dias_anticipacion: number | null;
+  fecha_contrato: string | null;
+  fecha_evento: string;
+  id: string;
+  motivo: ReportesAnticipacionAtipicoRow["motivo"] | null;
+  salon: string;
+  salon_id: string;
+  tipo_evento: string | null;
+};
+
+function getAnticipacionEventoRow(evento: ReporteEvento): AnticipacionEventoRow {
+  const cliente = evento.nombre_evento ?? evento.cliente_nombre;
+  const salon = evento.salones?.nombre ?? "Salon sin nombre";
+
+  if (!evento.fecha_contrato) {
+    return {
+      cliente,
+      dias_anticipacion: null,
+      fecha_contrato: null,
+      fecha_evento: evento.fecha_evento,
+      id: evento.id,
+      motivo: "sin_fecha_contrato",
+      salon,
+      salon_id: evento.salon_id,
+      tipo_evento: evento.tipo_evento,
+    };
+  }
+
+  const dias_anticipacion = getDaysBetweenDates(
+    evento.fecha_contrato,
+    evento.fecha_evento,
+  );
+  const motivo =
+    dias_anticipacion === null || dias_anticipacion < 0
+      ? "fecha_inconsistente"
+      : null;
+
+  return {
+    cliente,
+    dias_anticipacion,
+    fecha_contrato: evento.fecha_contrato,
+    fecha_evento: evento.fecha_evento,
+    id: evento.id,
+    motivo,
+    salon,
+    salon_id: evento.salon_id,
+    tipo_evento: evento.tipo_evento,
+  };
+}
+
+function buildAnticipacionDistribucion(
+  dias: number[],
+): ReportesAnticipacionDistribucionRow[] {
+  return ANTICIPACION_RANGOS.map((range) => {
+    const cantidad = dias.filter(
+      (value) =>
+        value >= range.min && (range.max === null || value <= range.max),
+    ).length;
+
+    return {
+      cantidad,
+      id: range.id,
+      label: range.label,
+      porcentaje:
+        dias.length > 0 ? roundMetric((cantidad / dias.length) * 100) : 0,
+    };
+  });
+}
+
+function buildAnticipacionMensual(
+  rows: AnticipacionEventoRow[],
+): ReportesAnticipacionMesRow[] {
+  const groups = new Map<string, number[]>();
+
+  for (const row of rows) {
+    if (row.dias_anticipacion === null) {
+      continue;
+    }
+
+    const key = row.fecha_evento.slice(0, 7);
+    const current = groups.get(key) ?? [];
+
+    current.push(row.dias_anticipacion);
+    groups.set(key, current);
+  }
+
+  return Array.from(groups.entries())
+    .map(([key, values]) => ({
+      anticipacion_promedio: getAverage(values),
+      eventos_analizados: values.length,
+      key,
+      label: formatMonthLabel(key),
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function buildAnticipacionPorSalon(
+  rows: AnticipacionEventoRow[],
+): ReportesAnticipacionSalonRow[] {
+  const groups = new Map<
+    string,
+    {
+      eventos: number;
+      inconsistentes: number;
+      label: string;
+      sinContrato: number;
+      values: number[];
+    }
+  >();
+
+  for (const row of rows) {
+    const current = groups.get(row.salon_id) ?? {
+      eventos: 0,
+      inconsistentes: 0,
+      label: row.salon,
+      sinContrato: 0,
+      values: [],
+    };
+
+    current.eventos += 1;
+
+    if (row.motivo === "sin_fecha_contrato") {
+      current.sinContrato += 1;
+    } else if (row.motivo === "fecha_inconsistente") {
+      current.inconsistentes += 1;
+    } else if (row.dias_anticipacion !== null) {
+      current.values.push(row.dias_anticipacion);
+    }
+
+    groups.set(row.salon_id, current);
+  }
+
+  return Array.from(groups.entries())
+    .map(([id, group]) => ({
+      anticipacion_maxima: getMax(group.values),
+      anticipacion_minima: getMin(group.values),
+      anticipacion_promedio: getAverage(group.values),
+      eventos: group.eventos,
+      eventos_analizados: group.values.length,
+      eventos_fecha_inconsistente: group.inconsistentes,
+      eventos_sin_fecha_contrato: group.sinContrato,
+      id,
+      label: group.label,
+    }))
+    .sort((a, b) => {
+      if (b.eventos !== a.eventos) {
+        return b.eventos - a.eventos;
+      }
+
+      return a.label.localeCompare(b.label, "es");
+    });
+}
+
+function buildAnticipacionPorTipo(
+  rows: AnticipacionEventoRow[],
+): ReportesAnticipacionTipoRow[] {
+  const groups = new Map<string, { label: string; values: number[] }>();
+
+  for (const row of rows) {
+    if (row.dias_anticipacion === null) {
+      continue;
+    }
+
+    const label = row.tipo_evento?.trim() || "Sin tipo";
+    const current = groups.get(label) ?? { label, values: [] };
+
+    current.values.push(row.dias_anticipacion);
+    groups.set(label, current);
+  }
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      anticipacion_promedio: getAverage(group.values),
+      eventos_analizados: group.values.length,
+      id: group.label,
+      label: group.label,
+    }))
+    .sort((a, b) => {
+      if (b.eventos_analizados !== a.eventos_analizados) {
+        return b.eventos_analizados - a.eventos_analizados;
+      }
+
+      return a.label.localeCompare(b.label, "es");
+    });
 }
 
 function buildReportesFinancieros({
@@ -881,6 +1185,7 @@ function getEmptyReport({
   vendedores: Pick<Tables<"usuarios">, "id" | "full_name" | "email">[];
 }): ReportesGeneralesData {
   return {
+    anticipacion: getEmptyAnticipacionReport(),
     filters,
     metrics: {
       balanceSimple: 0,
@@ -916,6 +1221,25 @@ function getEmptyReport({
     porSalon: [],
     porVendedor: [],
     profile,
+  };
+}
+
+function getEmptyAnticipacionReport(): ReportesAnticipacionData {
+  return {
+    atipicos: [],
+    distribucion: buildAnticipacionDistribucion([]),
+    evolucionMensual: [],
+    metricas: {
+      anticipacion_maxima: null,
+      anticipacion_mediana: null,
+      anticipacion_minima: null,
+      anticipacion_promedio: null,
+      eventos_analizados: 0,
+      eventos_fecha_inconsistente: 0,
+      eventos_sin_fecha_contrato: 0,
+    },
+    porSalon: [],
+    porTipoEvento: [],
   };
 }
 
@@ -966,6 +1290,66 @@ function getEstadoLabel(estado: EstadoEvento) {
 
 function getTodayInputValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function getDaysBetweenDates(from: string, to: string) {
+  const fromDate = getUtcDate(from);
+  const toDate = getUtcDate(to);
+
+  if (!fromDate || !toDate) {
+    return null;
+  }
+
+  return Math.round((toDate.getTime() - fromDate.getTime()) / 86_400_000);
+}
+
+function getUtcDate(value: string | null | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    return null;
+  }
+
+  return date;
+}
+
+function getAverage(values: number[]) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return roundMetric(values.reduce((total, value) => total + value, 0) / values.length);
+}
+
+function getMedian(values: number[]) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 === 1) {
+    return sorted[middle];
+  }
+
+  return roundMetric((sorted[middle - 1] + sorted[middle]) / 2);
+}
+
+function getMin(values: number[]) {
+  return values.length > 0 ? Math.min(...values) : null;
+}
+
+function getMax(values: number[]) {
+  return values.length > 0 ? Math.max(...values) : null;
+}
+
+function roundMetric(value: number) {
+  return Math.round((value + Number.EPSILON) * 10) / 10;
 }
 
 function toMoneyNumber(value: number | null | undefined) {
