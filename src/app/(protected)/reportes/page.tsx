@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/table";
 import {
   getReportesGenerales,
+  type ReportesFinancierosEventoRow,
+  type ReportesFinancierosMesRow,
   type ReportesGeneralesRow,
   type ReportesGeneralesSearchParams,
 } from "@/lib/reportes/queries";
@@ -43,6 +45,7 @@ export default async function ReportesPage({
   const params = searchParams ? await searchParams : {};
   const reportes = await getReportesGenerales(params);
   const isAdmin = reportes.profile.rol === "admin";
+  const financieros = reportes.financieros;
 
   return (
     <section className="space-y-6">
@@ -164,9 +167,9 @@ export default async function ReportesPage({
           helper="Cantidad total del periodo"
         />
         <SummaryCard
-          label="Ingresos registrados"
+          label="Cobrado real"
           value={formatCurrency(reportes.metrics.totalIngresos)}
-          helper="Pagos activos en pesos"
+          helper="Pagos activos, sin garantias"
         />
         <SummaryCard
           label="Egresos registrados"
@@ -174,7 +177,7 @@ export default async function ReportesPage({
           helper="Egresos activos en pesos"
         />
         <SummaryCard
-          label="Balance simple"
+          label="Resultado neto"
           value={formatCurrency(reportes.metrics.balanceSimple)}
           helper="Ingresos menos egresos"
           valueClassName={
@@ -194,7 +197,84 @@ export default async function ReportesPage({
             reportes.metrics.saldoPendiente > 0 ? "text-amber-700" : undefined
           }
         />
+        <SummaryCard
+          label="Garantias registradas"
+          value={formatCurrency(reportes.metrics.garantiasRegistradas)}
+          helper="Pagos marcados como garantia"
+        />
       </dl>
+
+      <section className="space-y-6">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-[0.16em] text-teal-700">
+            Reportes financieros
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+            Ingresos vs egresos
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+            Cashflow real por fecha de movimiento y detalle comercial por fecha
+            del evento para entender resultado, margen y saldos pendientes.
+          </p>
+        </div>
+
+        <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <SummaryCard
+            label="Total cobrado"
+            value={formatCurrency(financieros.metricas.ingresos_cobrados)}
+            helper="Pagos activos sin garantias"
+          />
+          <SummaryCard
+            label="Total egresado"
+            value={formatCurrency(financieros.metricas.egresos_pagados)}
+            helper="Egresos activos del periodo"
+          />
+          <SummaryCard
+            label="Resultado neto"
+            value={formatCurrency(financieros.metricas.resultado_neto)}
+            helper="Cobrado menos egresado"
+            valueClassName={getMoneyClass(financieros.metricas.resultado_neto)}
+          />
+          <SummaryCard
+            label="Margen"
+            value={formatPercent(financieros.metricas.margen_porcentaje)}
+            helper="Resultado sobre cobrado"
+            valueClassName={getMoneyClass(financieros.metricas.resultado_neto)}
+          />
+          <SummaryCard
+            label="Total vendido"
+            value={formatCurrency(financieros.metricas.total_vendido)}
+            helper="Servicios y catering incluidos"
+          />
+          <SummaryCard
+            label="Pendiente de cobro"
+            value={formatCurrency(financieros.metricas.pendiente_cobro)}
+            helper="Saldo estimado del resumen"
+            valueClassName={
+              financieros.metricas.pendiente_cobro > 0
+                ? "text-amber-700"
+                : undefined
+            }
+          />
+          <SummaryCard
+            label="Garantias"
+            value={formatCurrency(financieros.metricas.garantias_registradas)}
+            helper="Registradas aparte del ingreso"
+          />
+          <SummaryCard
+            label="Eventos incluidos"
+            value={formatNumber(financieros.metricas.eventos_incluidos)}
+            helper="Segun fecha del evento"
+          />
+        </dl>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <FinancialSalonTable rows={financieros.porSalon} />
+          <FinancialMonthlyTable rows={financieros.evolucionMensual} />
+        </div>
+
+        <FinancialEventTable rows={financieros.porEvento} />
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <GroupTable
@@ -308,6 +388,212 @@ function SummaryCard({
   );
 }
 
+function FinancialSalonTable({
+  rows,
+}: {
+  rows: {
+    egresos_pagados: number;
+    eventos: number;
+    id: string;
+    ingresos_cobrados: number;
+    label: string;
+    margen_porcentaje: number | null;
+    pendiente_cobro: number;
+    resultado_neto: number;
+  }[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Resultado por salon</CardTitle>
+        <CardDescription>
+          Eventos filtrados por fecha del evento; pagos y egresos activos
+          asociados a esos eventos.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Salon</TableHead>
+                <TableHead className="text-right">Eventos</TableHead>
+                <TableHead className="text-right">Cobrado</TableHead>
+                <TableHead className="text-right">Egresos</TableHead>
+                <TableHead className="text-right">Neto</TableHead>
+                <TableHead className="text-right">Margen</TableHead>
+                <TableHead className="text-right">Pendiente</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-medium text-slate-950">
+                    {row.label}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.eventos)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.ingresos_cobrados)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.egresos_pagados)}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right font-medium ${getMoneyClass(row.resultado_neto)}`}
+                  >
+                    {formatCurrency(row.resultado_neto)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatPercent(row.margen_porcentaje)}
+                  </TableCell>
+                  <TableCell className="text-right text-amber-700">
+                    {formatCurrency(row.pendiente_cobro)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay datos financieros por salon"
+            description="No se encontraron eventos activos para los filtros actuales."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FinancialMonthlyTable({ rows }: { rows: ReportesFinancierosMesRow[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Evolucion mensual</CardTitle>
+        <CardDescription>
+          Ingresos y egresos reales por fecha de pago o egreso.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mes</TableHead>
+                <TableHead className="text-right">Cobrado</TableHead>
+                <TableHead className="text-right">Egresos</TableHead>
+                <TableHead className="text-right">Neto</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.key}>
+                  <TableCell className="font-medium text-slate-950">
+                    {row.label}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.ingresos_cobrados)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.egresos_pagados)}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right font-medium ${getMoneyClass(row.resultado_neto)}`}
+                  >
+                    {formatCurrency(row.resultado_neto)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay movimientos en el periodo"
+            description="No se encontraron pagos o egresos activos para las fechas seleccionadas."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FinancialEventTable({
+  rows,
+}: {
+  rows: ReportesFinancierosEventoRow[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Resultado por evento</CardTitle>
+        <CardDescription>
+          Detalle comercial por fecha del evento, con cobros reales sin
+          garantias.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Evento</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Salon</TableHead>
+                <TableHead className="text-right">Vendido</TableHead>
+                <TableHead className="text-right">Cobrado</TableHead>
+                <TableHead className="text-right">Egresos</TableHead>
+                <TableHead className="text-right">Neto</TableHead>
+                <TableHead className="text-right">Pendiente</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <Link
+                      href={`/eventos/${row.id}/flujo-dinero`}
+                      className="font-medium text-slate-950 transition hover:text-teal-700"
+                    >
+                      {row.evento}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-slate-600">
+                    {formatDate(row.fecha_evento)}
+                  </TableCell>
+                  <TableCell className="text-slate-600">{row.salon}</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.total_vendido)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.ingresos_cobrados)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.egresos_pagados)}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right font-medium ${getMoneyClass(row.resultado_neto)}`}
+                  >
+                    {formatCurrency(row.resultado_neto)}
+                  </TableCell>
+                  <TableCell className="text-right text-amber-700">
+                    {formatCurrency(row.pendiente_cobro)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay eventos financieros"
+            description="No se encontraron eventos activos para los filtros actuales."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function GroupTable({
   description,
   emptyTitle,
@@ -379,6 +665,26 @@ function formatDate(value: string) {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("es-AR").format(value);
+}
+
+function formatPercent(value: number | null) {
+  if (value === null) {
+    return "-";
+  }
+
+  return `${formatNumber(value)}%`;
+}
+
+function getMoneyClass(value: number) {
+  if (value < 0) {
+    return "text-red-700";
+  }
+
+  if (value > 0) {
+    return "text-emerald-700";
+  }
+
+  return "text-slate-950";
 }
 
 function getEstadoLabel(estado: string) {
