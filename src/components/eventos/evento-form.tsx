@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import {
   FieldError,
   FormAlert,
@@ -303,13 +304,12 @@ export function EventoForm({
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <Label htmlFor="fecha_evento">Fecha del evento</Label>
-              <Input
+              <DatePickerField
                 id="fecha_evento"
                 name="fecha_evento"
-                type="date"
                 required
                 value={selectedFechaEvento}
-                onChange={(event) => setSelectedFechaEvento(event.target.value)}
+                onValueChange={setSelectedFechaEvento}
                 aria-invalid={Boolean(state.errors.fecha_evento)}
                 aria-describedby={
                   state.errors.fecha_evento ? "fecha_evento-error" : undefined
@@ -332,10 +332,9 @@ export function EventoForm({
             ) : (
               <div>
                 <Label htmlFor="fecha_carga">Fecha de carga</Label>
-                <Input
+                <DatePickerField
                   id="fecha_carga"
                   name="fecha_carga"
-                  type="date"
                   required
                   defaultValue={state.fields.fecha_carga}
                   aria-invalid={Boolean(state.errors.fecha_carga)}
@@ -355,10 +354,9 @@ export function EventoForm({
               <Label htmlFor="fecha_confirmacion_presupuesto">
                 Fecha de confirmacion de presupuesto
               </Label>
-              <Input
+              <DatePickerField
                 id="fecha_confirmacion_presupuesto"
                 name="fecha_confirmacion_presupuesto"
-                type="date"
                 defaultValue={state.fields.fecha_confirmacion_presupuesto}
                 aria-invalid={Boolean(
                   state.errors.fecha_confirmacion_presupuesto,

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { SubmitButton } from "@/components/salones/submit-button";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import {
   FieldError,
   FormAlert,
@@ -41,6 +42,9 @@ export function EgresoForm({
   const formaPagoValue = state.successMessage
     ? initialState.fields.forma_pago
     : state.fields.forma_pago || "sin_especificar";
+  const fechaEgresoValue = state.successMessage
+    ? initialState.fields.fecha_egreso
+    : state.fields.fecha_egreso;
   const eventoServicioValue = state.successMessage
     ? "sin_asociar"
     : state.fields.evento_servicio_id || "sin_asociar";
@@ -113,12 +117,12 @@ export function EgresoForm({
 
         <div>
           <Label htmlFor="fecha_egreso">Fecha de egreso</Label>
-          <Input
+          <DatePickerField
+            key={`fecha-egreso-${fechaEgresoValue}`}
             id="fecha_egreso"
             name="fecha_egreso"
-            type="date"
             required
-            defaultValue={state.fields.fecha_egreso}
+            defaultValue={fechaEgresoValue}
             aria-invalid={Boolean(state.errors.fecha_egreso)}
             aria-describedby={
               state.errors.fecha_egreso ? "fecha_egreso-error" : undefined

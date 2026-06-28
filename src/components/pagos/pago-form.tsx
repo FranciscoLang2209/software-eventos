@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { SubmitButton } from "@/components/salones/submit-button";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import {
   FieldError,
   FormAlert,
@@ -37,6 +38,9 @@ export function PagoForm({ action, initialState, servicios }: PagoFormProps) {
   const formaPagoValue = state.successMessage
     ? initialState.fields.forma_pago
     : state.fields.forma_pago;
+  const fechaPagoValue = state.successMessage
+    ? initialState.fields.fecha_pago
+    : state.fields.fecha_pago;
   const eventoServicioValue = state.successMessage
     ? "sin_asociar"
     : state.fields.evento_servicio_id || "sin_asociar";
@@ -70,12 +74,12 @@ export function PagoForm({ action, initialState, servicios }: PagoFormProps) {
 
         <div>
           <Label htmlFor="fecha_pago">Fecha de pago</Label>
-          <Input
+          <DatePickerField
+            key={`fecha-pago-${fechaPagoValue}`}
             id="fecha_pago"
             name="fecha_pago"
-            type="date"
             required
-            defaultValue={state.fields.fecha_pago}
+            defaultValue={fechaPagoValue}
             aria-invalid={Boolean(state.errors.fecha_pago)}
             aria-describedby={
               state.errors.fecha_pago ? "fecha_pago-error" : undefined
