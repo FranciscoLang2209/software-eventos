@@ -34,8 +34,10 @@ import {
   type ReportesAnticipacionMesRow,
   type ReportesAnticipacionSalonRow,
   type ReportesAnticipacionTipoRow,
+  type ReportesFinancierosCategoriaRow,
   type ReportesFinancierosEventoRow,
   type ReportesFinancierosMesRow,
+  type ReportesFinancierosVendedorRow,
   type ReportesGeneralesRow,
   type ReportesGeneralesSearchParams,
 } from "@/lib/reportes/queries";
@@ -95,7 +97,7 @@ export default async function ReportesPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+          <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
             <input type="hidden" name="tab" value={activeTab} />
             <div>
               <Label htmlFor="desde">Desde</Label>
@@ -169,6 +171,25 @@ export default async function ReportesPage({
                   {reportes.options.estados.map((estado) => (
                     <SelectItem key={estado} value={estado}>
                       {getEstadoLabel(estado)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="evento">Evento</Label>
+              <Select
+                name="evento"
+                defaultValue={reportes.filters.eventoId ?? "all"}
+              >
+                <SelectTrigger id="evento">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {reportes.options.eventos.map((evento) => (
+                    <SelectItem key={evento.id} value={evento.id}>
+                      {getEventoOptionLabel(evento)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -331,8 +352,9 @@ export default async function ReportesPage({
             Ingresos vs egresos
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-            Cashflow real por fecha de movimiento y detalle comercial por fecha
-            del evento para entender resultado, margen y saldos pendientes.
+            Eventos por fecha del evento y movimientos asociados por fecha de
+            pago o egreso. Las garantias se muestran aparte y no se cuentan
+            como ingreso real.
           </p>
         </div>
 
@@ -384,11 +406,41 @@ export default async function ReportesPage({
             value={formatNumber(financieros.metricas.eventos_incluidos)}
             helper="Segun fecha del evento"
           />
+          <SummaryCard
+            label="Ingreso promedio"
+            value={formatCurrency(
+              financieros.metricas.promedio_ingresos_por_evento,
+            )}
+            helper="Cobrado por evento incluido"
+          />
+          <SummaryCard
+            label="Egreso promedio"
+            value={formatCurrency(
+              financieros.metricas.promedio_egresos_por_evento,
+            )}
+            helper="Egresado por evento incluido"
+          />
+          <SummaryCard
+            label="Neto promedio"
+            value={formatCurrency(
+              financieros.metricas.promedio_resultado_neto_por_evento,
+            )}
+            helper="Resultado por evento incluido"
+            valueClassName={getMoneyClass(
+              financieros.metricas.promedio_resultado_neto_por_evento,
+            )}
+          />
         </dl>
+
+        <FinancialMonthlyChart rows={financieros.evolucionMensual} />
 
         <div className="grid gap-6 xl:grid-cols-2">
           <FinancialSalonTable rows={financieros.porSalon} />
           <FinancialMonthlyTable rows={financieros.evolucionMensual} />
+          <FinancialCategoryTable rows={financieros.egresosPorCategoria} />
+          {isAdmin ? (
+            <FinancialVendedorTable rows={financieros.porVendedor} />
+          ) : null}
         </div>
 
         <FinancialEventTable rows={financieros.porEvento} />
@@ -988,6 +1040,111 @@ function FinancialMonthlyTable({ rows }: { rows: ReportesFinancierosMesRow[] }) 
   );
 }
 
+function FinancialMonthlyChart({ rows }: { rows: ReportesFinancierosMesRow[] }) {
+  const maxValue = Math.max(
+    ...rows.flatMap((row) => [
+      Math.abs(row.ingresos_cobrados),
+      Math.abs(row.egresos_pagados),
+      Math.abs(row.resultado_neto),
+    ]),
+    0,
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Evolucion financiera</CardTitle>
+        <CardDescription>
+          Comparacion mensual de ingresos, egresos y resultado neto por fecha
+          de movimiento.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-4 text-xs font-medium text-slate-500">
+              <span className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-emerald-600" />
+                Ingresos
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-red-500" />
+                Egresos
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-teal-700" />
+                Neto
+              </span>
+            </div>
+            <div className="space-y-5">
+              {rows.map((row) => (
+                <div key={row.key} className="grid gap-2 md:grid-cols-[8rem_1fr]">
+                  <div className="text-sm font-medium text-slate-950">
+                    {row.label}
+                  </div>
+                  <div className="space-y-2">
+                    <FinancialBar
+                      label="Ingresos"
+                      value={row.ingresos_cobrados}
+                      maxValue={maxValue}
+                      className="bg-emerald-600"
+                    />
+                    <FinancialBar
+                      label="Egresos"
+                      value={row.egresos_pagados}
+                      maxValue={maxValue}
+                      className="bg-red-500"
+                    />
+                    <FinancialBar
+                      label="Neto"
+                      value={row.resultado_neto}
+                      maxValue={maxValue}
+                      className={
+                        row.resultado_neto < 0 ? "bg-red-600" : "bg-teal-700"
+                      }
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <EmptyState
+            title="No hay evolucion financiera"
+            description="No se encontraron pagos o egresos activos para graficar."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FinancialBar({
+  className,
+  label,
+  maxValue,
+  value,
+}: {
+  className: string;
+  label: string;
+  maxValue: number;
+  value: number;
+}) {
+  const width = maxValue > 0 ? `${(Math.abs(value) / maxValue) * 100}%` : "0%";
+
+  return (
+    <div className="grid grid-cols-[4.75rem_1fr_7rem] items-center gap-3 text-xs">
+      <span className="text-slate-500">{label}</span>
+      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full rounded-full ${className}`} style={{ width }} />
+      </div>
+      <span className={`text-right font-medium ${getMoneyClass(value)}`}>
+        {formatCurrency(value)}
+      </span>
+    </div>
+  );
+}
+
 function FinancialEventTable({
   rows,
 }: {
@@ -1008,12 +1165,16 @@ function FinancialEventTable({
             <TableHeader>
               <TableRow>
                 <TableHead>Evento</TableHead>
+                <TableHead>Cliente</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Salon</TableHead>
+                <TableHead>Vendedor</TableHead>
                 <TableHead className="text-right">Vendido</TableHead>
                 <TableHead className="text-right">Cobrado</TableHead>
                 <TableHead className="text-right">Egresos</TableHead>
                 <TableHead className="text-right">Neto</TableHead>
+                <TableHead className="text-right">Margen</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Pendiente</TableHead>
               </TableRow>
             </TableHeader>
@@ -1028,10 +1189,12 @@ function FinancialEventTable({
                       {row.evento}
                     </Link>
                   </TableCell>
+                  <TableCell className="text-slate-600">{row.cliente}</TableCell>
                   <TableCell className="whitespace-nowrap text-slate-600">
                     {formatDate(row.fecha_evento)}
                   </TableCell>
                   <TableCell className="text-slate-600">{row.salon}</TableCell>
+                  <TableCell className="text-slate-600">{row.vendedor}</TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(row.total_vendido)}
                   </TableCell>
@@ -1046,6 +1209,14 @@ function FinancialEventTable({
                   >
                     {formatCurrency(row.resultado_neto)}
                   </TableCell>
+                  <TableCell className="text-right">
+                    {formatPercent(row.margen_porcentaje)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={getRentabilidadVariant(row.rentabilidad_estado)}>
+                      {getRentabilidadLabel(row.rentabilidad_estado)}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right text-amber-700">
                     {formatCurrency(row.pendiente_cobro)}
                   </TableCell>
@@ -1057,6 +1228,120 @@ function FinancialEventTable({
           <EmptyState
             title="No hay eventos financieros"
             description="No se encontraron eventos activos para los filtros actuales."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FinancialCategoryTable({
+  rows,
+}: {
+  rows: ReportesFinancierosCategoriaRow[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Egresos por categoria</CardTitle>
+        <CardDescription>
+          Distribucion de gastos activos por categoria del egreso.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Categoria</TableHead>
+                <TableHead className="text-right">Registros</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-medium text-slate-950">
+                    {row.label}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.cantidad)}
+                  </TableCell>
+                  <TableCell className="text-right text-red-700">
+                    {formatCurrency(row.egresos_pagados)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay egresos por categoria"
+            description="No se encontraron egresos activos para las fechas seleccionadas."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FinancialVendedorTable({
+  rows,
+}: {
+  rows: ReportesFinancierosVendedorRow[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Resultado por vendedor</CardTitle>
+        <CardDescription>
+          Eventos y movimientos agrupados por responsable comercial.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length > 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Vendedor</TableHead>
+                <TableHead className="text-right">Eventos</TableHead>
+                <TableHead className="text-right">Cobrado</TableHead>
+                <TableHead className="text-right">Egresos</TableHead>
+                <TableHead className="text-right">Neto</TableHead>
+                <TableHead className="text-right">Margen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-medium text-slate-950">
+                    {row.label}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatNumber(row.eventos)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.ingresos_cobrados)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(row.egresos_pagados)}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right font-medium ${getMoneyClass(row.resultado_neto)}`}
+                  >
+                    {formatCurrency(row.resultado_neto)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatPercent(row.margen_porcentaje)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : (
+          <EmptyState
+            title="No hay resultado por vendedor"
+            description="No se encontraron eventos activos para agrupar por vendedor."
           />
         )}
       </CardContent>
@@ -1182,6 +1467,16 @@ function formatNullableDays(value: number | null) {
   return `${formatNumber(value)} ${value === 1 ? "dia" : "dias"}`;
 }
 
+function getEventoOptionLabel(evento: {
+  cliente_nombre: string;
+  fecha_evento: string;
+  nombre_evento: string | null;
+}) {
+  return `${formatDate(evento.fecha_evento)} - ${
+    evento.nombre_evento ?? evento.cliente_nombre
+  }`;
+}
+
 function formatPercent(value: number | null) {
   if (value === null) {
     return "-";
@@ -1223,6 +1518,35 @@ function getEstadoVariant(estado: string) {
   }
 
   return "neutral";
+}
+
+function getRentabilidadLabel(
+  estado: ReportesFinancierosEventoRow["rentabilidad_estado"],
+) {
+  const labels: Record<
+    ReportesFinancierosEventoRow["rentabilidad_estado"],
+    string
+  > = {
+    equilibrio: "Equilibrio",
+    ganancia: "Ganancia",
+    perdida: "Perdida",
+  };
+
+  return labels[estado];
+}
+
+function getRentabilidadVariant(
+  estado: ReportesFinancierosEventoRow["rentabilidad_estado"],
+) {
+  if (estado === "ganancia") {
+    return "success";
+  }
+
+  if (estado === "perdida") {
+    return "danger";
+  }
+
+  return "warning";
 }
 
 function getAnticipacionMotivoLabel(
