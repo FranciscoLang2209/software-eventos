@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireAdmin } from "@/lib/auth/require-admin";
@@ -8,13 +9,18 @@ export default async function AdminPage() {
 
   const items = [
     {
+      description: "Consulta y edita cualquier evento, sus servicios y movimientos financieros",
+      href: "/eventos",
+      name: "Edicion global de eventos",
+    },
+    {
       description: "Reservado para administradores",
       href: null,
       name: "Usuarios y roles",
     },
     {
-      description: "Reservado para administradores",
-      href: null,
+      description: "Historial de cambios realizados por administradores",
+      href: "/admin/auditoria",
       name: "Auditoria",
     },
     {
@@ -44,14 +50,20 @@ export default async function AdminPage() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 transition hover:border-teal-100 hover:bg-teal-50/50"
+                  className="group flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3.5 transition hover:border-teal-100 hover:bg-teal-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
                 >
-                  <p className="text-sm font-medium text-slate-950">
-                    {item.name}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {item.description}
-                  </p>
+                  <div>
+                    <p className="text-sm font-medium text-slate-950">
+                      {item.name}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.description}
+                    </p>
+                  </div>
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-teal-700"
+                  />
                 </Link>
               ) : (
                 <div

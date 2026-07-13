@@ -16,6 +16,7 @@ export type EventoFormFields = {
   fecha_evento: string;
   fecha_carga: string;
   fecha_confirmacion_presupuesto: string;
+  estado: string;
   nombre_evento: string;
   tipo_evento: string;
   subtipo_evento: string;
@@ -41,10 +42,12 @@ export type EventoFormState = {
 
 export type EventoPayload = Omit<
   TablesInsert<"eventos">,
-  "estado" | "fecha_contrato" | "vendedor_id"
+  "fecha_contrato" | "vendedor_id"
 > & {
   vendedor_id?: string;
 };
+
+const ESTADOS_EVENTO = ["borrador", "confirmado", "realizado", "cancelado"];
 
 export const emptyEventoFormState: EventoFormState = {
   fields: {
@@ -60,6 +63,7 @@ export const emptyEventoFormState: EventoFormState = {
     fecha_evento: "",
     fecha_carga: getTodayInputValue(),
     fecha_confirmacion_presupuesto: "",
+    estado: "borrador",
     nombre_evento: "",
     tipo_evento: "",
     subtipo_evento: "",
@@ -96,6 +100,7 @@ export function getEventoFormStateFromEvento(
       fecha_carga: evento.fecha_carga,
       fecha_confirmacion_presupuesto:
         evento.fecha_confirmacion_presupuesto ?? "",
+      estado: evento.estado,
       nombre_evento: evento.nombre_evento ?? "",
       tipo_evento: evento.tipo_evento ?? "",
       subtipo_evento: evento.subtipo_evento ?? "",
@@ -138,6 +143,7 @@ export function validateEventoForm(
   const fechaCarga = fields.fecha_carga.trim();
   const fechaConfirmacionPresupuesto =
     fields.fecha_confirmacion_presupuesto.trim();
+  const estado = fields.estado.trim() || "borrador";
   const tieneOrganizador = fields.tiene_organizador === "true";
   const organizadorNombre = fields.organizador_nombre.trim();
   const organizadorEmail = fields.organizador_email.trim();
@@ -167,6 +173,10 @@ export function validateEventoForm(
     !isDateInputValue(fechaConfirmacionPresupuesto)
   ) {
     errors.fecha_confirmacion_presupuesto = "Ingresa una fecha valida.";
+  }
+
+  if (mode === "edit" && !ESTADOS_EVENTO.includes(estado)) {
+    errors.estado = "Selecciona un estado valido.";
   }
 
   const tipoEvento = fields.tipo_evento.trim();
@@ -250,6 +260,7 @@ export function validateEventoForm(
       fecha_evento: fechaEvento,
       fecha_carga: fechaCarga || getTodayInputValue(),
       fecha_confirmacion_presupuesto: fechaConfirmacionPresupuesto || null,
+      estado: estado as Tables<"eventos">["estado"],
       nombre_evento: nullableTrim(fields.nombre_evento),
       tipo_evento: nullableTrim(tipoEvento),
       subtipo_evento: nullableTrim(subtipoEvento),
@@ -289,6 +300,7 @@ function getEventoFields(formData: FormData): EventoFormFields {
       formData,
       "fecha_confirmacion_presupuesto",
     ),
+    estado: getString(formData, "estado"),
     nombre_evento: getString(formData, "nombre_evento"),
     tipo_evento: getString(formData, "tipo_evento"),
     subtipo_evento: getString(formData, "subtipo_evento"),

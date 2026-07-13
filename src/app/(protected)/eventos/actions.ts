@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentProfile } from "@/lib/auth";
+import {
+  getAuthorizedActiveEvento,
+  getCurrentProfile,
+  usuarioTieneSalon,
+} from "@/lib/auth";
+import { insertAuditLog } from "@/lib/audit/log";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
 import {
@@ -12,12 +17,9 @@ import {
 } from "@/lib/eventos/validation";
 import { generateEventoName } from "@/lib/eventos/types";
 import { applyMonthlyServicePricesToEvento } from "@/lib/precios-servicios/precios-mensuales";
-import type { Tables, TablesUpdate } from "@/types/database.types";
+import type { Json, Tables, TablesUpdate } from "@/types/database.types";
 
-type EditableEvento = Pick<
-  Tables<"eventos">,
-  "created_at" | "id" | "salon_id" | "vendedor_id"
->;
+type EditableEvento = Tables<"eventos">;
 
 export type DeleteEventoState = {
   formError?: string;
@@ -128,6 +130,22 @@ export async function createEventoAction(
     };
   }
 
+  if (profile.rol === "admin") {
+    await insertAuditLog({
+      accion: "INSERT",
+      datosNuevos: toAuditJson({
+        ...payload,
+        estado: "borrador",
+        fecha_carga: getTodayInputValue(),
+        nombre_evento: nombreEvento,
+        vendedor_id: vendedorId,
+      }),
+      registroId: data.id,
+      tabla: "eventos",
+      usuarioId: profile.id,
+    });
+  }
+
   const priceResult = await applyMonthlyServicePricesToEvento({
     eventoId: data.id,
   });
@@ -154,6 +172,16 @@ export async function updateEventoAction(
     return state;
   }
 
+  const authorizedEvento = await getAuthorizedActiveEvento(id, profile);
+
+  if (!authorizedEvento) {
+    return {
+      ...state,
+      formError:
+        "No se pudo actualizar el evento. Verifica los datos e intenta nuevamente.",
+    };
+  }
+
   const currentEvento = await getEditableEventoById(id);
 
   if (!currentEvento) {
@@ -162,21 +190,6 @@ export async function updateEventoAction(
       formError:
         "No se pudo actualizar el evento. Verifica los datos e intenta nuevamente.",
     };
-  }
-
-  if (profile.rol === "vendedor") {
-    const canEditCurrentSalon = await usuarioTieneSalon(
-      profile.id,
-      currentEvento.salon_id,
-    );
-
-    if (!canEditCurrentSalon) {
-      return {
-        ...state,
-        formError:
-          "No se pudo actualizar el evento. Verifica los datos e intenta nuevamente.",
-      };
-    }
   }
 
   const vendedorId =
@@ -219,6 +232,7 @@ export async function updateEventoAction(
     fecha_evento: payload.fecha_evento,
     fecha_carga: payload.fecha_carga,
     fecha_confirmacion_presupuesto: payload.fecha_confirmacion_presupuesto,
+    estado: payload.estado,
     nombre_evento: payload.nombre_evento,
     tipo_evento: payload.tipo_evento,
     subtipo_evento: payload.subtipo_evento,
@@ -232,6 +246,7 @@ export async function updateEventoAction(
     organizador_email: payload.organizador_email,
     organizador_telefono: payload.organizador_telefono,
     observaciones: payload.observaciones,
+    updated_at: new Date().toISOString(),
   };
 
   if (profile.rol === "admin") {
@@ -285,6 +300,21 @@ export async function updateEventoAction(
     }
   }
 
+  if (profile.rol === "admin") {
+    const auditDiff = getAuditDiff(currentEvento, updatePayload);
+
+    if (auditDiff) {
+      await insertAuditLog({
+        accion: "UPDATE",
+        datosAnteriores: auditDiff.before,
+        datosNuevos: auditDiff.after,
+        registroId: id,
+        tabla: "eventos",
+        usuarioId: profile.id,
+      });
+    }
+  }
+
   const priceResult = await applyMonthlyServicePricesToEvento({
     eventoId: id,
   });
@@ -294,7 +324,7 @@ export async function updateEventoAction(
   revalidatePath(`/eventos/${id}/editar`);
   redirect(
     getEventoRedirectUrl(id, "updated", priceResult, {
-      shouldReviewSalonPrices: currentEvento.salon_id !== payload.salon_id,
+      shouldReviewSalonPrices: authorizedEvento.salon_id !== payload.salon_id,
     }),
   );
 }
@@ -313,6 +343,14 @@ export async function deleteEventoAction(
     redirect("/dashboard");
   }
 
+  const authorizedEvento = await getAuthorizedActiveEvento(id, profile);
+
+  if (!authorizedEvento) {
+    return {
+      formError: DELETE_EVENTO_ERROR,
+    };
+  }
+
   const currentEvento = await getEditableEventoById(id);
 
   if (!currentEvento) {
@@ -321,24 +359,12 @@ export async function deleteEventoAction(
     };
   }
 
-  if (profile.rol === "vendedor") {
-    const canDeleteCurrentSalon = await usuarioTieneSalon(
-      profile.id,
-      currentEvento.salon_id,
-    );
-
-    if (!canDeleteCurrentSalon) {
-      return {
-        formError: DELETE_EVENTO_ERROR,
-      };
-    }
-  }
-
+  const deletedAt = new Date().toISOString();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("eventos")
     .update({
-      deleted_at: new Date().toISOString(),
+      deleted_at: deletedAt,
     })
     .eq("id", id)
     .is("deleted_at", null)
@@ -358,6 +384,19 @@ export async function deleteEventoAction(
     };
   }
 
+  if (profile.rol === "admin") {
+    await insertAuditLog({
+      accion: "DELETE",
+      datosAnteriores: toAuditJson(getEventoAuditSnapshot(currentEvento)),
+      datosNuevos: toAuditJson({
+        deleted_at: deletedAt,
+      }),
+      registroId: authorizedEvento.id,
+      tabla: "eventos",
+      usuarioId: profile.id,
+    });
+  }
+
   revalidatePath("/eventos");
   revalidatePath(`/eventos/${id}`);
   redirect("/eventos?deleted=1");
@@ -374,22 +413,10 @@ async function validateEventoAccess({
   currentUserId: string;
   currentUserRole: "admin" | "vendedor";
 }) {
-  const supabase = await createClient();
-  const { data: salon, error: salonError } = await supabase
-    .from("salones")
-    .select("id")
-    .eq("id", salonId)
-    .eq("activo", true)
-    .is("deleted_at", null)
-    .maybeSingle();
+  const salonError = await validateSalonActivo(salonId);
 
   if (salonError) {
-    logSupabaseError("createEventoAction validar salon", salonError);
-    return "No se pudo validar el salon seleccionado.";
-  }
-
-  if (!salon) {
-    return "Selecciona un salon activo disponible.";
+    return salonError;
   }
 
   if (currentUserRole === "vendedor" && vendedorId !== currentUserId) {
@@ -397,43 +424,13 @@ async function validateEventoAccess({
   }
 
   if (currentUserRole === "vendedor") {
-    const { data: assignment, error: assignmentError } = await supabase
-      .from("usuario_salon")
-      .select("usuario_id")
-      .eq("usuario_id", vendedorId)
-      .eq("salon_id", salonId)
-      .maybeSingle();
-
-    if (assignmentError) {
-      logSupabaseError(
-        "createEventoAction validar asignacion vendedor",
-        assignmentError,
-      );
-      return "No se pudo validar la asignacion del salon.";
-    }
-
-    if (!assignment) {
+    if (!(await usuarioTieneSalon(vendedorId, salonId))) {
       return "El vendedor seleccionado no tiene asignado ese salon.";
     }
   }
 
   if (currentUserRole === "admin") {
-    const { data: vendedor, error: vendedorError } = await supabase
-      .from("usuarios")
-      .select("id")
-      .eq("id", vendedorId)
-      .eq("rol", "vendedor")
-      .eq("activo", true)
-      .maybeSingle();
-
-    if (vendedorError) {
-      logSupabaseError("createEventoAction validar vendedor", vendedorError);
-      return "No se pudo validar el vendedor seleccionado.";
-    }
-
-    if (!vendedor) {
-      return "Selecciona un vendedor activo.";
-    }
+    return validateVendedorActivo(vendedorId);
   }
 
   return null;
@@ -479,7 +476,7 @@ async function getEditableEventoById(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("eventos")
-    .select("created_at, id, salon_id, vendedor_id")
+    .select("*")
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
@@ -566,19 +563,72 @@ async function validateVendedorActivo(vendedorId: string) {
   return null;
 }
 
-async function usuarioTieneSalon(usuarioId: string, salonId: string) {
-  const supabase = await createClient();
-  const { data: assignment, error: assignmentError } = await supabase
-    .from("usuario_salon")
-    .select("usuario_id")
-    .eq("usuario_id", usuarioId)
-    .eq("salon_id", salonId)
-    .maybeSingle();
+function getAuditDiff(
+  currentEvento: EditableEvento,
+  updatePayload: TablesUpdate<"eventos">,
+) {
+  const before = getEventoAuditSnapshot(currentEvento);
+  const after = getEventoAuditSnapshot({
+    ...currentEvento,
+    ...updatePayload,
+  });
+  const changedBefore: Record<string, Json> = {};
+  const changedAfter: Record<string, Json> = {};
 
-  if (assignmentError) {
-    logSupabaseError("usuarioTieneSalon validar asignacion", assignmentError);
-    return false;
+  for (const key of Object.keys(after)) {
+    if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+      changedBefore[key] = before[key];
+      changedAfter[key] = after[key];
+    }
   }
 
-  return Boolean(assignment);
+  if (Object.keys(changedAfter).length === 0) {
+    return null;
+  }
+
+  return {
+    after: changedAfter,
+    before: changedBefore,
+  };
+}
+
+function getEventoAuditSnapshot(evento: TablesUpdate<"eventos">) {
+  return toAuditJson({
+    cliente_ciudad: evento.cliente_ciudad,
+    cliente_contacto: evento.cliente_contacto,
+    cliente_cuit_dni: evento.cliente_cuit_dni,
+    cliente_direccion: evento.cliente_direccion,
+    cliente_direccion_factura: evento.cliente_direccion_factura,
+    cliente_nombre: evento.cliente_nombre,
+    cliente_razon_social: evento.cliente_razon_social,
+    deleted_at: evento.deleted_at,
+    espacio: evento.espacio,
+    estado: evento.estado,
+    fecha_carga: evento.fecha_carga,
+    fecha_confirmacion_presupuesto: evento.fecha_confirmacion_presupuesto,
+    fecha_evento: evento.fecha_evento,
+    nombre_evento: evento.nombre_evento,
+    observaciones: evento.observaciones,
+    organizador_email: evento.organizador_email,
+    organizador_nombre: evento.organizador_nombre,
+    organizador_telefono: evento.organizador_telefono,
+    pax_adultos: evento.pax_adultos,
+    pax_bebes: evento.pax_bebes,
+    pax_jovenes: evento.pax_jovenes,
+    pax_menores: evento.pax_menores,
+    salon_id: evento.salon_id,
+    subtipo_evento: evento.subtipo_evento,
+    tiene_organizador: evento.tiene_organizador,
+    tipo_evento: evento.tipo_evento,
+    updated_at: evento.updated_at,
+    vendedor_id: evento.vendedor_id,
+  });
+}
+
+function toAuditJson(value: Record<string, unknown>): Record<string, Json> {
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, item]) => item !== undefined)
+      .map(([key, item]) => [key, item as Json]),
+  );
 }

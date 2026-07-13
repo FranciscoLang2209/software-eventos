@@ -44,6 +44,12 @@ import type {
 } from "@/lib/eventos/validation";
 
 const NO_SUBTIPO_VALUE = "__sin_subtipo__";
+const EVENT_STATES = [
+  { label: "Borrador", value: "borrador" },
+  { label: "Confirmado", value: "confirmado" },
+  { label: "Realizado", value: "realizado" },
+  { label: "Cancelado", value: "cancelado" },
+];
 
 type EventoFormProps = {
   action: (
@@ -86,6 +92,7 @@ export function EventoForm({
   const [selectedTipoEvento, setSelectedTipoEvento] = useState(
     state.fields.tipo_evento,
   );
+  const [selectedEstado, setSelectedEstado] = useState(state.fields.estado);
   const [selectedSubtipoEvento, setSelectedSubtipoEvento] = useState(
     state.fields.subtipo_evento,
   );
@@ -172,6 +179,16 @@ export function EventoForm({
                 <FieldError id="salon_id-error">
                   {state.errors.salon_id}
                 </FieldError>
+              ) : null}
+              {isAdmin &&
+              mode === "edit" &&
+              selectedSalonId &&
+              selectedSalonId !== initialState.fields.salon_id ? (
+                <Alert variant="warning" className="mt-2 px-3 py-2">
+                  Al cambiar el salon no se recalculan ni sobrescriben valores
+                  financieros ya cargados. Revisa servicios, pagos y egresos
+                  asociados.
+                </Alert>
               ) : null}
             </div>
 
@@ -494,6 +511,37 @@ export function EventoForm({
                   label="Subtipo de evento"
                   defaultValue={state.fields.subtipo_evento}
                 />
+                <div>
+                  <Label htmlFor="estado">Estado</Label>
+                  <Select
+                    name="estado"
+                    required
+                    value={selectedEstado}
+                    onValueChange={setSelectedEstado}
+                  >
+                    <SelectTrigger
+                      id="estado"
+                      aria-invalid={Boolean(state.errors.estado)}
+                      aria-describedby={
+                        state.errors.estado ? "estado-error" : undefined
+                      }
+                    >
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EVENT_STATES.map((estado) => (
+                        <SelectItem key={estado.value} value={estado.value}>
+                          {estado.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {state.errors.estado ? (
+                    <FieldError id="estado-error">
+                      {state.errors.estado}
+                    </FieldError>
+                  ) : null}
+                </div>
               </>
             )}
             <TextField

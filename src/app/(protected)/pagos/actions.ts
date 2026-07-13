@@ -3,7 +3,8 @@
 import { recalculateEventoServicioTotals } from "@/app/(protected)/evento-servicios/actions";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentProfile, type CurrentProfile } from "@/lib/auth";
+import { getAuthorizedActiveEvento, getCurrentProfile } from "@/lib/auth";
+import { insertAuditLog } from "@/lib/audit/log";
 import {
   getEmptyPagoFormState,
   type PagoFormState,
@@ -11,11 +12,6 @@ import {
 } from "@/lib/pagos/validation";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
-
-type AuthorizedEvento = {
-  id: string;
-  salon_id: string;
-};
 
 export type DeletePagoState = {
   formError?: string;
@@ -99,6 +95,27 @@ export async function createPagoAction(
     };
   }
 
+  if (profile.rol === "admin") {
+    await insertAuditLog({
+      accion: "INSERT",
+      datosNuevos: {
+        concepto: payload.concepto,
+        es_garantia: false,
+        evento_id: evento.id,
+        evento_servicio_id: eventoServicioId,
+        fecha_pago: payload.fecha_pago,
+        forma_pago: payload.forma_pago,
+        importe_moneda_original: payload.monto,
+        moneda: "ARS",
+        notas: payload.notas,
+        registrado_por: profile.id,
+      },
+      registroId: data.id,
+      tabla: "pagos",
+      usuarioId: profile.id,
+    });
+  }
+
   await setEventoFechaContratoIfMissing(evento.id, payload.fecha_pago);
 
   if (eventoServicioId) {
@@ -136,11 +153,12 @@ export async function deletePagoAction(
     };
   }
 
+  const deletedAt = new Date().toISOString();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("pagos")
     .update({
-      deleted_at: new Date().toISOString(),
+      deleted_at: deletedAt,
     })
     .eq("id", pagoId)
     .eq("evento_id", evento.id)
@@ -159,6 +177,23 @@ export async function deletePagoAction(
     return {
       formError: DELETE_PAGO_ERROR,
     };
+  }
+
+  if (profile.rol === "admin") {
+    await insertAuditLog({
+      accion: "DELETE",
+      datosAnteriores: {
+        evento_id: evento.id,
+        evento_servicio_id: data.evento_servicio_id,
+        id: data.id,
+      },
+      datosNuevos: {
+        deleted_at: deletedAt,
+      },
+      registroId: data.id,
+      tabla: "pagos",
+      usuarioId: profile.id,
+    });
   }
 
   if (data.evento_servicio_id) {
@@ -269,46 +304,6 @@ async function setEventoFechaContratoIfMissing(
   if (error) {
     logSupabaseError("pagos actualizar fecha de primer ingreso", error);
   }
-}
-
-async function getAuthorizedActiveEvento(
-  eventoId: string,
-  profile: CurrentProfile,
-): Promise<AuthorizedEvento | null> {
-  const supabase = await createClient();
-  const { data: evento, error: eventoError } = await supabase
-    .from("eventos")
-    .select("id, salon_id")
-    .eq("id", eventoId)
-    .is("deleted_at", null)
-    .maybeSingle();
-
-  if (eventoError) {
-    logSupabaseError("pagos validar evento", eventoError);
-    return null;
-  }
-
-  if (!evento) {
-    return null;
-  }
-
-  if (profile.rol === "admin") {
-    return evento;
-  }
-
-  const { data: assignment, error: assignmentError } = await supabase
-    .from("usuario_salon")
-    .select("usuario_id")
-    .eq("usuario_id", profile.id)
-    .eq("salon_id", evento.salon_id)
-    .maybeSingle();
-
-  if (assignmentError) {
-    logSupabaseError("pagos validar asignacion", assignmentError);
-    return null;
-  }
-
-  return assignment ? evento : null;
 }
 
 function toMoneyNumber(value: number | null | undefined) {

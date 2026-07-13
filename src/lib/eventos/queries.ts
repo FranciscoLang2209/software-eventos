@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getCurrentProfile, type CurrentProfile } from "@/lib/auth";
+import { canAccessSalon, getCurrentProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
 import type { Tables } from "@/types/database.types";
@@ -148,7 +148,7 @@ export async function getEventoById(id: string) {
     throw new Error("No se pudo obtener el evento.");
   }
 
-  if (!data || !(await canAccessEvento(profile, data.salon_id))) {
+  if (!data || !(await canAccessSalon(profile, data.salon_id))) {
     notFound();
   }
 
@@ -262,25 +262,4 @@ async function getActiveProfile() {
   }
 
   return profile;
-}
-
-async function canAccessEvento(profile: CurrentProfile, salonId: string) {
-  if (profile.rol === "admin") {
-    return true;
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("usuario_salon")
-    .select("usuario_id")
-    .eq("usuario_id", profile.id)
-    .eq("salon_id", salonId)
-    .maybeSingle();
-
-  if (error) {
-    logSupabaseError("canAccessEvento validar asignacion", error);
-    throw new Error("No se pudo validar el acceso al evento.");
-  }
-
-  return Boolean(data);
 }
