@@ -4,8 +4,20 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublicRoute = pathname === "/login";
-  const { claims, response } = await updateSession(request);
+  const { accessDenied, claims, response } = await updateSession(request);
   const isAuthenticated = Boolean(claims);
+
+  if (accessDenied) {
+    const redirectResponse = NextResponse.redirect(
+      new URL("/login?error=inactive", request.url),
+    );
+
+    response.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+
+    return redirectResponse;
+  }
 
   if (isAuthenticated && pathname === "/login") {
     return NextResponse.redirect(new URL("/dashboard", request.url));

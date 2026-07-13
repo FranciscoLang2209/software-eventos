@@ -39,10 +39,32 @@ Fill in `.env.local` with the Supabase project values.
 
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Public anonymous key for browser and server clients using RLS.
-- `SUPABASE_SERVICE_ROLE_KEY`: Server-only key for future trusted backend operations.
+- `SUPABASE_SERVICE_ROLE_KEY`: Server-only key required by administrative user
+  creation and Auth synchronization.
 
 Never expose `SUPABASE_SERVICE_ROLE_KEY` in client components, browser bundles or
 public logs.
+
+## Administrative User Management
+
+Administrators manage users at `/admin/usuarios`. Creating a user uses the
+server-only Supabase Admin API and generates a strong temporary password. The
+password is displayed once after creation, is never stored in `public.usuarios`
+or `audit_log`, and must be communicated through a secure channel.
+
+Apply the user-management migration before deploying the application:
+
+```bash
+supabase db push
+```
+
+The migration adds transactional RPCs for profiles and salon assignments,
+protects the last active administrator, records user changes in the existing
+audit log, and removes direct authenticated writes to `usuarios` and
+`usuario_salon`. Inactive users are also banned through Supabase Auth; the
+middleware checks `usuarios.activo` on every application request as the primary
+application-level control. Administrators do not need salon assignments; any
+legacy assignments are removed when an administrator profile is saved.
 
 ## Start Next.js
 

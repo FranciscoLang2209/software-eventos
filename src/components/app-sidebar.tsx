@@ -7,6 +7,7 @@ import {
   Landmark,
   Settings,
   Store,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -25,11 +26,27 @@ const navigation = [
   { name: "Salones", href: "/salones", group: "Gestion", icon: Store },
   { name: "Pagos", href: "/pagos", group: "Finanzas", icon: Landmark },
   { name: "Reportes", href: "/reportes", group: "Finanzas", icon: BarChart3 },
-  { name: "Admin", href: "/admin", group: "Sistema", icon: Settings },
+  {
+    name: "Usuarios",
+    href: "/admin/usuarios",
+    group: "Sistema",
+    icon: Users,
+    adminOnly: true,
+  },
+  {
+    name: "Admin",
+    href: "/admin",
+    group: "Sistema",
+    icon: Settings,
+    adminOnly: true,
+  },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
+  const visibleNavigation = navigation.filter(
+    (item) => !item.adminOnly || isAdmin,
+  );
 
   return (
     <aside className="border-b border-slate-200/70 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 lg:sticky lg:top-0 lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-r">
@@ -54,7 +71,7 @@ export function AppSidebar() {
         <Separator className="mt-5 bg-slate-100" />
 
         <nav className="mt-5 grid gap-1 sm:grid-cols-3 lg:grid-cols-1">
-          {navigation.map((item) => (
+          {visibleNavigation.map((item) => (
             <NavLink
               key={item.href}
               href={item.href}

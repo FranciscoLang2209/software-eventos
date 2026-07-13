@@ -14,8 +14,8 @@ export default async function AdminPage() {
       name: "Edicion global de eventos",
     },
     {
-      description: "Reservado para administradores",
-      href: null,
+      description: "Alta, roles, estado y asignaciones de salones",
+      href: "/admin/usuarios",
       name: "Usuarios y roles",
     },
     {

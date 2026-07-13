@@ -1058,6 +1058,30 @@ export type Database = {
       }
     }
     Functions: {
+      admin_create_usuario_profile: {
+        Args: {
+          p_activo: boolean
+          p_email: string
+          p_full_name: string
+          p_id: string
+          p_rol: Database["public"]["Enums"]["rol_usuario"]
+          p_salon_ids?: string[]
+        }
+        Returns: Database["public"]["Tables"]["usuarios"]["Row"]
+      }
+      admin_update_usuario: {
+        Args: {
+          p_activo: boolean
+          p_email: string
+          p_full_name: string
+          p_id: string
+          p_rol: Database["public"]["Enums"]["rol_usuario"]
+          p_salon_ids?: string[]
+        }
+        Returns: Database["public"]["Tables"]["usuarios"]["Row"]
+      }
+      current_user_is_active: { Args: never; Returns: boolean }
+      current_user_is_active_admin: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       set_usuario_salon_assignments: {
         Args: { p_usuario_id: string; p_salon_ids?: string[] }

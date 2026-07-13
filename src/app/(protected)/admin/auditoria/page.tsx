@@ -23,7 +23,7 @@ export default async function AuditoriaPage() {
       <PageHeader
         eyebrow="Admin"
         title="Auditoria administrativa"
-        description="Ultimos cambios realizados por administradores sobre eventos y sus movimientos relacionados."
+        description="Ultimos cambios realizados por administradores sobre usuarios, eventos y movimientos relacionados."
         actions={
           <Link
             href="/admin"
@@ -105,7 +105,7 @@ export default async function AuditoriaPage() {
         ) : (
           <EmptyState
             title="Todavia no hay cambios auditados"
-            description="Las modificaciones administrativas de eventos, servicios, pagos y egresos apareceran aca."
+            description="Las modificaciones administrativas de usuarios, eventos, servicios, pagos y egresos apareceran aca."
           />
         )}
       </Card>
@@ -224,6 +224,7 @@ function getTableLabel(table: string) {
     evento_servicios: "Servicio del evento",
     eventos: "Evento",
     pagos: "Pago",
+    usuarios: "Usuario",
   };
 
   return labels[table] ?? table;
@@ -231,8 +232,13 @@ function getTableLabel(table: string) {
 
 function getFieldLabel(field: string) {
   const labels: Record<string, string> = {
+    activo: "Estado activo",
+    email: "Email",
     evento_id: "Evento",
+    full_name: "Nombre completo",
+    rol: "Rol",
     salon_id: "Salon",
+    salon_ids: "Salones asignados",
     vendedor_id: "Vendedor",
   };
 

@@ -4,6 +4,7 @@ import { LoginForm } from "./login-form";
 
 type LoginPageProps = {
   searchParams?: Promise<{
+    error?: string | string[];
     redirectedFrom?: string | string[];
   }>;
 };
@@ -33,6 +34,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   const params = await searchParams;
   const redirectTo = getRedirectPath(params?.redirectedFrom);
+  const accessError =
+    (Array.isArray(params?.error) ? params.error[0] : params?.error) ===
+    "inactive"
+      ? "Tu usuario esta inactivo o no tiene un perfil habilitado. Contacta a un administrador."
+      : null;
 
   return (
     <section className="flex min-h-screen items-center justify-center bg-background px-4 py-10 sm:px-6">
@@ -64,7 +70,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </div>
           </div>
           <div className="p-6 sm:p-8">
-            <LoginForm redirectTo={redirectTo} />
+            <LoginForm accessError={accessError} redirectTo={redirectTo} />
           </div>
         </div>
       </div>
