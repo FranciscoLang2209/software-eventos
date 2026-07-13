@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAuthorizedActiveEvento, getCurrentProfile } from "@/lib/auth";
-import { insertAuditLog } from "@/lib/audit/log";
 import {
   getEmptyEgresoFormState,
   type EgresoFormState,
@@ -92,29 +91,6 @@ export async function createEgresoAction(
     };
   }
 
-  if (profile.rol === "admin") {
-    await insertAuditLog({
-      accion: "INSERT",
-      datosNuevos: {
-        categoria: payload.categoria,
-        concepto: payload.concepto,
-        evento_id: evento.id,
-        evento_servicio_id: payload.evento_servicio_id,
-        fecha_egreso: payload.fecha_egreso,
-        forma_pago: payload.forma_pago,
-        importe_en_pesos: payload.monto,
-        importe_moneda_original: payload.monto,
-        moneda: "ARS",
-        notas: payload.notas,
-        proveedor: payload.proveedor,
-        registrado_por: profile.id,
-      },
-      registroId: data.id,
-      tabla: "egresos",
-      usuarioId: profile.id,
-    });
-  }
-
   revalidateEventoPaths(evento.id);
 
   return {
@@ -171,22 +147,6 @@ export async function deleteEgresoAction(
     return {
       formError: DELETE_EGRESO_ERROR,
     };
-  }
-
-  if (profile.rol === "admin") {
-    await insertAuditLog({
-      accion: "DELETE",
-      datosAnteriores: {
-        evento_id: evento.id,
-        id: data.id,
-      },
-      datosNuevos: {
-        deleted_at: deletedAt,
-      },
-      registroId: data.id,
-      tabla: "egresos",
-      usuarioId: profile.id,
-    });
   }
 
   revalidateEventoPaths(evento.id);

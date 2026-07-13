@@ -4,7 +4,6 @@ import { recalculateEventoServicioTotals } from "@/app/(protected)/evento-servic
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAuthorizedActiveEvento, getCurrentProfile } from "@/lib/auth";
-import { insertAuditLog } from "@/lib/audit/log";
 import {
   getEmptyPagoFormState,
   type PagoFormState,
@@ -95,27 +94,6 @@ export async function createPagoAction(
     };
   }
 
-  if (profile.rol === "admin") {
-    await insertAuditLog({
-      accion: "INSERT",
-      datosNuevos: {
-        concepto: payload.concepto,
-        es_garantia: false,
-        evento_id: evento.id,
-        evento_servicio_id: eventoServicioId,
-        fecha_pago: payload.fecha_pago,
-        forma_pago: payload.forma_pago,
-        importe_moneda_original: payload.monto,
-        moneda: "ARS",
-        notas: payload.notas,
-        registrado_por: profile.id,
-      },
-      registroId: data.id,
-      tabla: "pagos",
-      usuarioId: profile.id,
-    });
-  }
-
   await setEventoFechaContratoIfMissing(evento.id, payload.fecha_pago);
 
   if (eventoServicioId) {
@@ -177,23 +155,6 @@ export async function deletePagoAction(
     return {
       formError: DELETE_PAGO_ERROR,
     };
-  }
-
-  if (profile.rol === "admin") {
-    await insertAuditLog({
-      accion: "DELETE",
-      datosAnteriores: {
-        evento_id: evento.id,
-        evento_servicio_id: data.evento_servicio_id,
-        id: data.id,
-      },
-      datosNuevos: {
-        deleted_at: deletedAt,
-      },
-      registroId: data.id,
-      tabla: "pagos",
-      usuarioId: profile.id,
-    });
   }
 
   if (data.evento_servicio_id) {

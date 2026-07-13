@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAuthorizedActiveEvento, getCurrentProfile } from "@/lib/auth";
-import { insertAuditLog } from "@/lib/audit/log";
 import {
   getEmptyEventoServicioFormState,
   type EventoServicioFormState,
@@ -11,22 +10,6 @@ import {
 } from "@/lib/evento-servicios/validation";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
-import type { Tables } from "@/types/database.types";
-
-type AuditableEventoServicio = Pick<
-  Tables<"evento_servicios">,
-  | "adicionales_monto"
-  | "comisiona_organizador"
-  | "evento_id"
-  | "id"
-  | "iva_base_imponible"
-  | "iva_porcentaje"
-  | "notas"
-  | "precio_base"
-  | "proveedor"
-  | "servicio_id"
-  | "total_pagado"
->;
 
 export type DeleteEventoServicioState = {
   formError?: string;
@@ -99,28 +82,6 @@ export async function createEventoServicioAction(
     };
   }
 
-  if (profile.rol === "admin") {
-    await insertAuditLog({
-      accion: "INSERT",
-      datosNuevos: {
-        adicionales_monto: payload.adicionales_monto,
-        comisiona_organizador:
-          evento.tiene_organizador && payload.comisiona_organizador,
-        evento_id: evento.id,
-        iva_base_imponible: payload.iva_base_imponible,
-        iva_porcentaje: payload.iva_porcentaje,
-        notas: payload.notas,
-        precio_base: payload.precio_base,
-        proveedor: payload.proveedor,
-        servicio_id: payload.servicio_id,
-        total_pagado: 0,
-      },
-      registroId: data.id,
-      tabla: "evento_servicios",
-      usuarioId: profile.id,
-    });
-  }
-
   revalidateEventoPaths(evento.id);
 
   return {
@@ -157,10 +118,6 @@ export async function updateEventoServicioAction(
   }
 
   const supabase = await createClient();
-  const currentServicio =
-    profile.rol === "admin"
-      ? await getEventoServicioById(eventoServicioId, evento.id)
-      : null;
   const totalPagado = await getTotalPagadoEventoServicio(eventoServicioId);
   const { data, error } = await supabase
     .from("evento_servicios")
@@ -195,30 +152,6 @@ export async function updateEventoServicioAction(
       ...state,
       formError: UPDATE_EVENTO_SERVICIO_ERROR,
     };
-  }
-
-  if (profile.rol === "admin" && currentServicio) {
-    await insertAuditLog({
-      accion: "UPDATE",
-      datosAnteriores: currentServicio,
-      datosNuevos: {
-        adicionales_monto: payload.adicionales_monto,
-        comisiona_organizador:
-          evento.tiene_organizador && payload.comisiona_organizador,
-        evento_id: evento.id,
-        id: eventoServicioId,
-        iva_base_imponible: payload.iva_base_imponible,
-        iva_porcentaje: payload.iva_porcentaje,
-        notas: payload.notas,
-        precio_base: payload.precio_base,
-        proveedor: payload.proveedor,
-        servicio_id: payload.servicio_id,
-        total_pagado: totalPagado,
-      },
-      registroId: eventoServicioId,
-      tabla: "evento_servicios",
-      usuarioId: profile.id,
-    });
   }
 
   revalidateEventoPaths(evento.id);
@@ -262,10 +195,6 @@ export async function deleteEventoServicioAction(
   }
 
   const supabase = await createClient();
-  const currentServicio =
-    profile.rol === "admin"
-      ? await getEventoServicioById(eventoServicioId, evento.id)
-      : null;
   const { data, error } = await supabase
     .from("evento_servicios")
     .delete()
@@ -285,16 +214,6 @@ export async function deleteEventoServicioAction(
     return {
       formError: DELETE_EVENTO_SERVICIO_ERROR,
     };
-  }
-
-  if (profile.rol === "admin" && currentServicio) {
-    await insertAuditLog({
-      accion: "DELETE",
-      datosAnteriores: currentServicio,
-      registroId: eventoServicioId,
-      tabla: "evento_servicios",
-      usuarioId: profile.id,
-    });
   }
 
   revalidateEventoPaths(evento.id);
@@ -336,28 +255,6 @@ export async function recalculateEventoServicioTotals(
   if (error) {
     logSupabaseError("recalculateEventoServicioTotals actualizar", error);
   }
-}
-
-async function getEventoServicioById(
-  eventoServicioId: string,
-  eventoId: string,
-): Promise<AuditableEventoServicio | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("evento_servicios")
-    .select(
-      "id, evento_id, servicio_id, precio_base, adicionales_monto, iva_base_imponible, iva_porcentaje, proveedor, total_pagado, notas, comisiona_organizador",
-    )
-    .eq("id", eventoServicioId)
-    .eq("evento_id", eventoId)
-    .maybeSingle();
-
-  if (error) {
-    logSupabaseError("getEventoServicioById auditoria", error);
-    return null;
-  }
-
-  return data;
 }
 
 async function isActiveCatalogService(servicioId: string) {

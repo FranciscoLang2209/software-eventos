@@ -7,7 +7,6 @@ import {
   getCurrentProfile,
   usuarioTieneSalon,
 } from "@/lib/auth";
-import { insertAuditLog } from "@/lib/audit/log";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
 import {
@@ -17,7 +16,7 @@ import {
 } from "@/lib/eventos/validation";
 import { generateEventoName } from "@/lib/eventos/types";
 import { applyMonthlyServicePricesToEvento } from "@/lib/precios-servicios/precios-mensuales";
-import type { Json, Tables, TablesUpdate } from "@/types/database.types";
+import type { Tables, TablesUpdate } from "@/types/database.types";
 
 type EditableEvento = Tables<"eventos">;
 
@@ -128,22 +127,6 @@ export async function createEventoAction(
       ...state,
       formError: "No se pudo crear el evento. Intenta nuevamente.",
     };
-  }
-
-  if (profile.rol === "admin") {
-    await insertAuditLog({
-      accion: "INSERT",
-      datosNuevos: toAuditJson({
-        ...payload,
-        estado: "borrador",
-        fecha_carga: getTodayInputValue(),
-        nombre_evento: nombreEvento,
-        vendedor_id: vendedorId,
-      }),
-      registroId: data.id,
-      tabla: "eventos",
-      usuarioId: profile.id,
-    });
   }
 
   const priceResult = await applyMonthlyServicePricesToEvento({
@@ -300,21 +283,6 @@ export async function updateEventoAction(
     }
   }
 
-  if (profile.rol === "admin") {
-    const auditDiff = getAuditDiff(currentEvento, updatePayload);
-
-    if (auditDiff) {
-      await insertAuditLog({
-        accion: "UPDATE",
-        datosAnteriores: auditDiff.before,
-        datosNuevos: auditDiff.after,
-        registroId: id,
-        tabla: "eventos",
-        usuarioId: profile.id,
-      });
-    }
-  }
-
   const priceResult = await applyMonthlyServicePricesToEvento({
     eventoId: id,
   });
@@ -382,19 +350,6 @@ export async function deleteEventoAction(
     return {
       formError: DELETE_EVENTO_ERROR,
     };
-  }
-
-  if (profile.rol === "admin") {
-    await insertAuditLog({
-      accion: "DELETE",
-      datosAnteriores: toAuditJson(getEventoAuditSnapshot(currentEvento)),
-      datosNuevos: toAuditJson({
-        deleted_at: deletedAt,
-      }),
-      registroId: authorizedEvento.id,
-      tabla: "eventos",
-      usuarioId: profile.id,
-    });
   }
 
   revalidatePath("/eventos");
@@ -561,74 +516,4 @@ async function validateVendedorActivo(vendedorId: string) {
   }
 
   return null;
-}
-
-function getAuditDiff(
-  currentEvento: EditableEvento,
-  updatePayload: TablesUpdate<"eventos">,
-) {
-  const before = getEventoAuditSnapshot(currentEvento);
-  const after = getEventoAuditSnapshot({
-    ...currentEvento,
-    ...updatePayload,
-  });
-  const changedBefore: Record<string, Json> = {};
-  const changedAfter: Record<string, Json> = {};
-
-  for (const key of Object.keys(after)) {
-    if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
-      changedBefore[key] = before[key];
-      changedAfter[key] = after[key];
-    }
-  }
-
-  if (Object.keys(changedAfter).length === 0) {
-    return null;
-  }
-
-  return {
-    after: changedAfter,
-    before: changedBefore,
-  };
-}
-
-function getEventoAuditSnapshot(evento: TablesUpdate<"eventos">) {
-  return toAuditJson({
-    cliente_ciudad: evento.cliente_ciudad,
-    cliente_contacto: evento.cliente_contacto,
-    cliente_cuit_dni: evento.cliente_cuit_dni,
-    cliente_direccion: evento.cliente_direccion,
-    cliente_direccion_factura: evento.cliente_direccion_factura,
-    cliente_nombre: evento.cliente_nombre,
-    cliente_razon_social: evento.cliente_razon_social,
-    deleted_at: evento.deleted_at,
-    espacio: evento.espacio,
-    estado: evento.estado,
-    fecha_carga: evento.fecha_carga,
-    fecha_confirmacion_presupuesto: evento.fecha_confirmacion_presupuesto,
-    fecha_evento: evento.fecha_evento,
-    nombre_evento: evento.nombre_evento,
-    observaciones: evento.observaciones,
-    organizador_email: evento.organizador_email,
-    organizador_nombre: evento.organizador_nombre,
-    organizador_telefono: evento.organizador_telefono,
-    pax_adultos: evento.pax_adultos,
-    pax_bebes: evento.pax_bebes,
-    pax_jovenes: evento.pax_jovenes,
-    pax_menores: evento.pax_menores,
-    salon_id: evento.salon_id,
-    subtipo_evento: evento.subtipo_evento,
-    tiene_organizador: evento.tiene_organizador,
-    tipo_evento: evento.tipo_evento,
-    updated_at: evento.updated_at,
-    vendedor_id: evento.vendedor_id,
-  });
-}
-
-function toAuditJson(value: Record<string, unknown>): Record<string, Json> {
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([, item]) => item !== undefined)
-      .map(([key, item]) => [key, item as Json]),
-  );
 }

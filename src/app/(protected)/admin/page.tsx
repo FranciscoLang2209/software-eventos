@@ -19,7 +19,7 @@ export default async function AdminPage() {
       name: "Usuarios y roles",
     },
     {
-      description: "Historial de cambios realizados por administradores",
+      description: "Historial inmutable de cambios realizados en el sistema",
       href: "/admin/auditoria",
       name: "Auditoria",
     },

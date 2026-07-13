@@ -5,6 +5,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   Landmark,
+  ScrollText,
   Settings,
   Store,
   Users,
@@ -31,6 +32,13 @@ const navigation = [
     href: "/admin/usuarios",
     group: "Sistema",
     icon: Users,
+    adminOnly: true,
+  },
+  {
+    name: "Auditoria",
+    href: "/admin/auditoria",
+    group: "Sistema",
+    icon: ScrollText,
     adminOnly: true,
   },
   {
@@ -144,5 +152,6 @@ function NavLink({
 }
 
 function isActive(pathname: string, href: string) {
+  if (href === "/admin") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }

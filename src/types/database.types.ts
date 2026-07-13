@@ -1058,6 +1058,8 @@ export type Database = {
       }
     }
     Functions: {
+      audit_current_user_is_admin: { Args: never; Returns: boolean }
+      audit_sanitize_jsonb: { Args: { p_value: Json }; Returns: Json }
       admin_create_usuario_profile: {
         Args: {
           p_activo: boolean
@@ -1099,7 +1101,14 @@ export type Database = {
       usuario_tiene_salon: { Args: { p_salon_id: string }; Returns: boolean }
     }
     Enums: {
-      accion_audit: "INSERT" | "UPDATE" | "DELETE"
+      accion_audit:
+        | "INSERT"
+        | "UPDATE"
+        | "DELETE"
+        | "SOFT_DELETE"
+        | "RESTORE"
+        | "ASSIGN"
+        | "UNASSIGN"
       categoria_catering_item:
         | "alimentos"
         | "bebidas_alcoholicas"
@@ -1258,7 +1267,15 @@ export const Constants = {
   },
   public: {
     Enums: {
-      accion_audit: ["INSERT", "UPDATE", "DELETE"],
+      accion_audit: [
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "SOFT_DELETE",
+        "RESTORE",
+        "ASSIGN",
+        "UNASSIGN",
+      ],
       categoria_catering_item: [
         "alimentos",
         "bebidas_alcoholicas",

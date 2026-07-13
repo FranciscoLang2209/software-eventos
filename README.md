@@ -66,6 +66,34 @@ middleware checks `usuarios.activo` on every application request as the primary
 application-level control. Administrators do not need salon assignments; any
 legacy assignments are removed when an administrator profile is saved.
 
+## Administrative Audit Log
+
+Administrators can inspect the immutable audit history at `/admin/auditoria`.
+The screen applies date, user, action, entity and record filters in Supabase,
+uses 25-row server-side pages, and renders field-level before/after comparisons.
+
+Apply `supabase/migrations/20260713110000_harden_audit_log.sql` before deploying
+this screen. The migration makes `audit_log` read-only for active administrators
+and records changes with PostgreSQL triggers on events, event services, payments,
+expenses, catering, users, venue assignments, venues, the service catalog and
+monthly service prices. The trigger obtains the actor from `auth.uid()`, ignores
+updates that only change `updated_at`, and recursively strips password, token,
+secret, credential and session-like fields.
+
+The repository has unit coverage for audit presentation, combined filter parsing
+and pagination. Database/RLS verification requires the local Supabase stack:
+
+1. Start Docker and run `pnpm supabase:start` followed by `pnpm supabase:reset`.
+2. As an administrator, create and edit an event, soft-delete it, change a user
+   role/status and add/remove a venue assignment; confirm each entry and actor in
+   `/admin/auditoria`.
+3. Sign in as a seller and confirm the route redirects to `/dashboard` and a
+   direct `select` from `audit_log` returns no rows/permission denied.
+4. As an authenticated user, confirm direct insert, update and delete operations
+   on `audit_log` are denied, while trigger-generated entries still succeed.
+5. Update only `updated_at` and confirm no entry is created; write a test row with
+   a token/password-like JSON key in an audited table and confirm it is stripped.
+
 ## Start Next.js
 
 ```bash
