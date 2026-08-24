@@ -1,13 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
+import {
+  calculatePaymentSummary,
+  type EstadoCobro,
+} from "@/lib/pagos/calculos";
 import type { Tables } from "@/types/database.types";
 
-export type EstadoCobro = "pendiente" | "parcial" | "pagado";
+export type { EstadoCobro } from "@/lib/pagos/calculos";
 
 export type PagoEvento = Pick<
   Tables<"pagos">,
   | "concepto"
   | "created_at"
+  | "es_garantia"
   | "evento_servicio_id"
   | "fecha_pago"
   | "forma_pago"
@@ -38,7 +43,7 @@ export async function getEventoIngresos(
     supabase
       .from("pagos")
       .select(
-        "id, concepto, created_at, evento_servicio_id, fecha_pago, forma_pago, importe_en_pesos, importe_moneda_original, moneda, notas, evento_servicios(servicios_catalogo(nombre))",
+        "id, concepto, created_at, es_garantia, evento_servicio_id, fecha_pago, forma_pago, importe_en_pesos, importe_moneda_original, moneda, notas, evento_servicios(servicios_catalogo(nombre))",
       )
       .eq("evento_id", eventoId)
       .is("deleted_at", null)
@@ -65,45 +70,15 @@ export async function getEventoIngresos(
   const totalEvento =
     toMoneyNumber(resumenResult.data?.total_catering) +
     toMoneyNumber(resumenResult.data?.total_servicios);
-  const totalCobrado = pagos.reduce(
-    (total, pago) =>
-      total +
-      toMoneyNumber(pago.importe_en_pesos ?? pago.importe_moneda_original),
-    0,
-  );
-  const saldoPendiente = Math.max(totalEvento - totalCobrado, 0);
+  const summary = calculatePaymentSummary({ payments: pagos, total: totalEvento });
 
   return {
-    estadoCobro: getEstadoCobro({
-      cantidadPagos: pagos.length,
-      totalCobrado,
-      totalEvento,
-    }),
+    estadoCobro: summary.estadoCobro,
     pagos,
-    saldoPendiente,
-    totalCobrado,
-    totalEvento,
+    saldoPendiente: summary.saldoPendiente,
+    totalCobrado: summary.totalCobrado,
+    totalEvento: summary.totalEvento,
   };
-}
-
-function getEstadoCobro({
-  cantidadPagos,
-  totalCobrado,
-  totalEvento,
-}: {
-  cantidadPagos: number;
-  totalCobrado: number;
-  totalEvento: number;
-}): EstadoCobro {
-  if (cantidadPagos === 0 || totalCobrado === 0 || totalEvento === 0) {
-    return "pendiente";
-  }
-
-  if (totalCobrado < totalEvento) {
-    return "parcial";
-  }
-
-  return "pagado";
 }
 
 function toMoneyNumber(value: number | null | undefined) {

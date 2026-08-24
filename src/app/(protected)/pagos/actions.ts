@@ -1,9 +1,10 @@
 "use server";
 
-import { recalculateEventoServicioTotals } from "@/app/(protected)/evento-servicios/actions";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getAuthorizedActiveEvento, getCurrentProfile } from "@/lib/auth";
+import { recalculateEventoServicioTotals } from "@/lib/evento-servicios/recalculate-totals";
+import { getMoneyAmount, isOrdinaryPayment } from "@/lib/pagos/calculos";
 import {
   getEmptyPagoFormState,
   type PagoFormState,
@@ -195,7 +196,9 @@ async function getEventoServicioConMayorSaldo(eventoId: string) {
       .eq("evento_id", eventoId),
     supabase
       .from("pagos")
-      .select("evento_servicio_id, importe_en_pesos, importe_moneda_original")
+      .select(
+        "es_garantia, evento_servicio_id, importe_en_pesos, importe_moneda_original",
+      )
       .eq("evento_id", eventoId)
       .is("deleted_at", null)
       .not("evento_servicio_id", "is", null),
@@ -220,13 +223,11 @@ async function getEventoServicioConMayorSaldo(eventoId: string) {
   const pagosPorServicio = new Map<string, number>();
 
   for (const pago of pagosResult.data) {
-    if (!pago.evento_servicio_id) {
+    if (!pago.evento_servicio_id || !isOrdinaryPayment(pago)) {
       continue;
     }
 
-    const monto = toMoneyNumber(
-      pago.importe_en_pesos ?? pago.importe_moneda_original,
-    );
+    const monto = getMoneyAmount(pago);
     const current = pagosPorServicio.get(pago.evento_servicio_id) ?? 0;
 
     pagosPorServicio.set(pago.evento_servicio_id, current + monto);

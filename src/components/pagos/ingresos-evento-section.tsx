@@ -39,7 +39,7 @@ export function IngresosEventoSection({
         <div>
           <CardTitle>Ingresos</CardTitle>
           <CardDescription>
-            Cobros registrados para este evento y saldo pendiente.
+            Pagos y garantias registrados; solo los pagos ordinarios reducen el saldo.
           </CardDescription>
         </div>
         <Badge variant={getEstadoCobroVariant(ingresos.estadoCobro)}>
@@ -53,7 +53,7 @@ export function IngresosEventoSection({
             value={formatCurrency(ingresos.totalEvento)}
           />
           <SummaryItem
-            label="Total cobrado"
+            label="Ingresos ordinarios"
             value={formatCurrency(ingresos.totalCobrado)}
           />
           <SummaryItem
@@ -81,7 +81,12 @@ export function IngresosEventoSection({
                   <TableRow key={pago.id}>
                     <TableCell>{formatDate(pago.fecha_pago)}</TableCell>
                     <TableCell className="font-medium text-slate-950">
-                      {pago.concepto ?? "-"}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{pago.concepto ?? "-"}</span>
+                        {pago.es_garantia ? (
+                          <Badge variant="warning">Garantia</Badge>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {pago.evento_servicios?.servicios_catalogo?.nombre ??

@@ -1,4 +1,8 @@
 import { getEventoById, type EventoDetalle } from "@/lib/eventos/queries";
+import {
+  calculateMoneyFlow,
+  getActiveOrdinaryPayments,
+} from "@/lib/pagos/calculos";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
 import type { Enums, Tables } from "@/types/database.types";
@@ -10,6 +14,7 @@ export type FlujoPago = Pick<
   | "catering_contrato_id"
   | "concepto"
   | "created_at"
+  | "es_garantia"
   | "evento_servicio_id"
   | "fecha_pago"
   | "forma_pago"
@@ -140,7 +145,7 @@ export async function getEventoFlujoDinero(
     supabase
       .from("pagos")
       .select(
-        "id, catering_contrato_id, concepto, created_at, evento_servicio_id, fecha_pago, forma_pago, importe_en_pesos, importe_moneda_original, moneda, notas",
+        "id, catering_contrato_id, concepto, created_at, es_garantia, evento_servicio_id, fecha_pago, forma_pago, importe_en_pesos, importe_moneda_original, moneda, notas",
       )
       .eq("evento_id", evento.id)
       .is("deleted_at", null)
@@ -203,6 +208,7 @@ export async function getEventoFlujoDinero(
   }
 
   const pagos = pagosResult.data as FlujoPago[];
+  const pagosOrdinarios = getActiveOrdinaryPayments(pagos);
   const egresos = egresosResult.data as FlujoEgreso[];
   const servicios = serviciosResult.data as FlujoEventoServicio[];
   const cateringContratos = cateringResult.data as FlujoCateringContrato[];
@@ -214,15 +220,20 @@ export async function getEventoFlujoDinero(
           toMoneyNumber(resumen.total_catering) +
             toMoneyNumber(resumen.total_servicios),
         );
-  const totalIngresos = sumMoneyRows(pagos);
-  const totalEgresos = sumMoneyRows(egresos);
-  const saldoNeto = roundMoney(totalIngresos - totalEgresos);
+  const { saldoNeto, totalEgresos, totalIngresos } = calculateMoneyFlow({
+    expenses: egresos,
+    payments: pagos,
+  });
   const saldoPendienteCobro =
     totalEvento === null ? null : Math.max(roundMoney(totalEvento - totalIngresos), 0);
-  const serviciosResumen = getServiciosResumen(servicios, pagos, egresos);
+  const serviciosResumen = getServiciosResumen(
+    servicios,
+    pagosOrdinarios,
+    egresos,
+  );
   const cateringResumen = getCateringResumen(
     cateringContratos,
-    pagos,
+    pagosOrdinarios,
     egresos,
   );
 
@@ -237,8 +248,11 @@ export async function getEventoFlujoDinero(
       (egreso) => egreso.proveedor?.trim() || "Sin proveedor",
     ),
     evento,
-    ingresosPorFormaPago: groupByValue(pagos, (pago) => pago.forma_pago),
-    ingresosPorMoneda: groupIngresosPorMoneda(pagos),
+    ingresosPorFormaPago: groupByValue(
+      pagosOrdinarios,
+      (pago) => pago.forma_pago,
+    ),
+    ingresosPorMoneda: groupIngresosPorMoneda(pagosOrdinarios),
     margenSimple:
       totalEvento && totalEvento > 0
         ? roundMoney((saldoNeto / totalEvento) * 100)

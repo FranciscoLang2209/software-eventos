@@ -4,6 +4,10 @@ import {
   type MonthlyServicePriceSuggestions,
 } from "@/lib/precios-servicios/precios-mensuales";
 import { logSupabaseError } from "@/lib/supabase/errors";
+import {
+  getMoneyAmount,
+  isOrdinaryPayment,
+} from "@/lib/pagos/calculos";
 import type { Enums, Tables } from "@/types/database.types";
 
 export type ServicioCatalogoOption = Pick<
@@ -43,7 +47,10 @@ export type EventoServicioPagoOption = {
 
 type PagoServicioRow = Pick<
   Tables<"pagos">,
-  "evento_servicio_id" | "importe_en_pesos" | "importe_moneda_original"
+  | "es_garantia"
+  | "evento_servicio_id"
+  | "importe_en_pesos"
+  | "importe_moneda_original"
 >;
 
 type EventoServicioRow = Omit<
@@ -76,7 +83,9 @@ export async function getEventoValores(eventoId: string) {
       .order("created_at", { ascending: true }),
     supabase
       .from("pagos")
-      .select("evento_servicio_id, importe_en_pesos, importe_moneda_original")
+      .select(
+        "es_garantia, evento_servicio_id, importe_en_pesos, importe_moneda_original",
+      )
       .eq("evento_id", eventoId)
       .is("deleted_at", null)
       .not("evento_servicio_id", "is", null),
@@ -154,13 +163,11 @@ function getPagosPorServicio(pagos: PagoServicioRow[]) {
   const pagosPorServicio = new Map<string, number>();
 
   for (const pago of pagos) {
-    if (!pago.evento_servicio_id) {
+    if (!pago.evento_servicio_id || !isOrdinaryPayment(pago)) {
       continue;
     }
 
-    const monto = toMoneyNumber(
-      pago.importe_en_pesos ?? pago.importe_moneda_original,
-    );
+    const monto = getMoneyAmount(pago);
     const current = pagosPorServicio.get(pago.evento_servicio_id) ?? 0;
 
     pagosPorServicio.set(pago.evento_servicio_id, roundMoney(current + monto));

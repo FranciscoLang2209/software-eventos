@@ -1,3 +1,9 @@
+import {
+  roundMoney,
+  sumGuarantees,
+  sumOrdinaryPayments,
+} from "../pagos/calculos";
+
 export type ReportesFinancierosMetricas = {
   egresos_pagados: number;
   eventos_incluidos: number;
@@ -121,6 +127,9 @@ export function buildReportesFinancieros({
   const egresos_pagados = sumImporteEnPesos(egresos);
   const resultado_neto = roundMoney(ingresos_cobrados - egresos_pagados);
   const eventos_incluidos = eventos.length;
+  const ingresosByEvento = groupImportesByEvento(
+    pagos.filter((pago) => !pago.es_garantia),
+  );
   const total_vendido = roundMoney(
     eventos.reduce(
       (total, evento) =>
@@ -131,7 +140,11 @@ export function buildReportesFinancieros({
   const pendiente_cobro = roundMoney(
     eventos.reduce(
       (total, evento) =>
-        total + getPendienteCobroEstimado(resumenByEvento.get(evento.id)),
+        total +
+        getPendienteCobroEstimado(
+          resumenByEvento.get(evento.id),
+          ingresosByEvento.get(evento.id) ?? 0,
+        ),
       0,
     ),
   );
@@ -208,7 +221,10 @@ function getFinancierosPorEvento({
         id: evento.id,
         ingresos_cobrados,
         margen_porcentaje: getMargenPorcentaje(resultado_neto, ingresos_cobrados),
-        pendiente_cobro: getPendienteCobroEstimado(resumen),
+        pendiente_cobro: getPendienteCobroEstimado(
+          resumen,
+          ingresos_cobrados,
+        ),
         rentabilidad_estado: getRentabilidadEstado(resultado_neto),
         resultado_neto,
         salon: evento.salon,
@@ -257,7 +273,10 @@ function getFinancierosPorSalon({
     );
     current.pendiente_cobro = roundMoney(
       current.pendiente_cobro +
-        getPendienteCobroEstimado(resumenByEvento.get(evento.id)),
+        getPendienteCobroEstimado(
+          resumenByEvento.get(evento.id),
+          ingresosByEvento.get(evento.id) ?? 0,
+        ),
     );
     current.resultado_neto = roundMoney(
       current.ingresos_cobrados - current.egresos_pagados,
@@ -431,11 +450,11 @@ function groupImportesByEvento<T extends { evento_id: string; importe_en_pesos: 
 }
 
 function sumIngresosCobrados(rows: ReporteFinancieroPago[]) {
-  return sumImporteEnPesos(rows.filter((row) => !row.es_garantia));
+  return sumOrdinaryPayments(rows);
 }
 
 function sumGarantiasRegistradas(rows: ReporteFinancieroPago[]) {
-  return sumImporteEnPesos(rows.filter((row) => row.es_garantia));
+  return sumGuarantees(rows);
 }
 
 function sumImporteEnPesos(rows: { importe_en_pesos: number | null }[]) {
@@ -450,9 +469,13 @@ function getTotalVendidoEstimado(row: ReporteFinancieroResumen | undefined) {
   );
 }
 
-function getPendienteCobroEstimado(row: ReporteFinancieroResumen | undefined) {
-  return roundMoney(
-    toMoneyNumber(row?.saldo_catering) + toMoneyNumber(row?.saldo_servicios),
+function getPendienteCobroEstimado(
+  row: ReporteFinancieroResumen | undefined,
+  totalCobrado: number,
+) {
+  return Math.max(
+    roundMoney(getTotalVendidoEstimado(row) - totalCobrado),
+    0,
   );
 }
 
@@ -498,8 +521,4 @@ function formatMonthLabel(key: string) {
 
 function toMoneyNumber(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-
-function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
 }

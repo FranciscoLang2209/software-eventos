@@ -8,6 +8,7 @@ import {
   type EventoServicioFormState,
   validateEventoServicioForm,
 } from "@/lib/evento-servicios/validation";
+import { getTotalPagadoEventoServicio } from "@/lib/evento-servicios/recalculate-totals";
 import { createClient } from "@/lib/supabase/server";
 import { logSupabaseError } from "@/lib/supabase/errors";
 
@@ -221,42 +222,6 @@ export async function deleteEventoServicioAction(
   return {};
 }
 
-export async function recalculateEventoServicioTotals(
-  eventoServicioId: string,
-) {
-  const supabase = await createClient();
-  const { data: servicio, error: servicioError } = await supabase
-    .from("evento_servicios")
-    .select("id")
-    .eq("id", eventoServicioId)
-    .maybeSingle();
-
-  if (servicioError) {
-    logSupabaseError(
-      "recalculateEventoServicioTotals obtener servicio",
-      servicioError,
-    );
-    return;
-  }
-
-  if (!servicio) {
-    return;
-  }
-
-  const totalPagado = await getTotalPagadoEventoServicio(eventoServicioId);
-  const { error } = await supabase
-    .from("evento_servicios")
-    .update({
-      total_pagado: totalPagado,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", eventoServicioId);
-
-  if (error) {
-    logSupabaseError("recalculateEventoServicioTotals actualizar", error);
-  }
-}
-
 async function isActiveCatalogService(servicioId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -291,38 +256,7 @@ async function hasActivePagos(eventoServicioId: string) {
   return data.length > 0;
 }
 
-async function getTotalPagadoEventoServicio(eventoServicioId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("pagos")
-    .select("importe_en_pesos, importe_moneda_original")
-    .eq("evento_servicio_id", eventoServicioId)
-    .is("deleted_at", null);
-
-  if (error) {
-    logSupabaseError("getTotalPagadoEventoServicio", error);
-    return 0;
-  }
-
-  return roundMoney(
-    data.reduce(
-      (total, pago) =>
-        total +
-        toMoneyNumber(pago.importe_en_pesos ?? pago.importe_moneda_original),
-      0,
-    ),
-  );
-}
-
 function revalidateEventoPaths(eventoId: string) {
   revalidatePath("/eventos");
   revalidatePath(`/eventos/${eventoId}`);
-}
-
-function toMoneyNumber(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-
-function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
 }

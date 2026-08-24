@@ -2,6 +2,12 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile, type CurrentProfile } from "@/lib/auth";
 import { getAssignedActiveSalones } from "@/lib/eventos/queries";
 import {
+  getMoneyAmount,
+  isOrdinaryPayment,
+  sumGuarantees,
+  sumOrdinaryPayments,
+} from "@/lib/pagos/calculos";
+import {
   buildReportesFinancieros,
   type ReporteFinancieroEvento,
   type ReportesFinancierosData,
@@ -272,15 +278,13 @@ export async function getReportesGenerales(
       0,
     ),
   );
-  const saldoPendiente = roundMoney(
-    resumen.reduce(
-      (total, row) =>
-        total +
-        toMoneyNumber(row.saldo_catering) +
-        toMoneyNumber(row.saldo_servicios),
-      0,
-    ),
-  );
+  const financieros = buildReportesFinancieros({
+    egresos: egresosEventos,
+    eventos: eventos.map(toReporteFinancieroEvento),
+    pagos: pagosEventos,
+    resumenByEvento,
+  });
+  const saldoPendiente = financieros.metricas.pendiente_cobro;
 
   return {
     anticipacion: buildReportesAnticipacion(eventos),
@@ -305,13 +309,8 @@ export async function getReportesGenerales(
       salones,
       vendedores,
     },
-    pendientes: getEventosPendientes(eventos, resumenByEvento),
-    financieros: buildReportesFinancieros({
-      egresos: egresosEventos,
-      eventos: eventos.map(toReporteFinancieroEvento),
-      pagos: pagosEventos,
-      resumenByEvento,
-    }),
+    pendientes: getEventosPendientes(eventos, resumenByEvento, pagosEventos),
+    financieros,
     porEstado: groupEventos(eventos, (evento) => ({
       id: evento.estado,
       label: getEstadoLabel(evento.estado),
@@ -635,19 +634,36 @@ function applyDateFilters(
 function getEventosPendientes(
   eventos: ReporteEvento[],
   resumenByEvento: Map<string, ResumenEventoRow>,
+  pagos: ReportePago[],
 ) {
   const today = getTodayInputValue();
+  const ingresosByEvento = new Map<string, number>();
+
+  for (const pago of pagos) {
+    if (!isOrdinaryPayment(pago)) {
+      continue;
+    }
+
+    ingresosByEvento.set(
+      pago.evento_id,
+      roundMoney(
+        (ingresosByEvento.get(pago.evento_id) ?? 0) + getMoneyAmount(pago),
+      ),
+    );
+  }
 
   return eventos
     .map((evento) => {
       const resumen = resumenByEvento.get(evento.id);
-      const saldoPendiente = roundMoney(
-        toMoneyNumber(resumen?.saldo_catering) +
-          toMoneyNumber(resumen?.saldo_servicios),
-      );
       const totalEstimado = roundMoney(
         toMoneyNumber(resumen?.total_catering) +
           toMoneyNumber(resumen?.total_servicios),
+      );
+      const saldoPendiente = Math.max(
+        roundMoney(
+          totalEstimado - (ingresosByEvento.get(evento.id) ?? 0),
+        ),
+        0,
       );
 
       return {
@@ -1026,11 +1042,11 @@ function getEmptyAnticipacionReport(): ReportesAnticipacionData {
 }
 
 function sumIngresosCobrados(rows: ReportePago[]) {
-  return sumImporteEnPesos(rows.filter((row) => !row.es_garantia));
+  return sumOrdinaryPayments(rows);
 }
 
 function sumGarantiasRegistradas(rows: ReportePago[]) {
-  return sumImporteEnPesos(rows.filter((row) => row.es_garantia));
+  return sumGuarantees(rows);
 }
 
 function sumImporteEnPesos(rows: ImporteRow[]) {

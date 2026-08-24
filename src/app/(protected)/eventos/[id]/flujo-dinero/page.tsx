@@ -71,9 +71,11 @@ export default async function EventoFlujoDineroPage({
           helper="Valor vendido registrado"
         />
         <SummaryCard
-          label="Total ingresado"
+          label="Ingresos ordinarios"
           value={formatCurrency(flujo.totalIngresos)}
-          helper={`${formatNumber(flujo.pagos.length)} pagos activos`}
+          helper={`${formatNumber(
+            flujo.pagos.filter((pago) => !pago.es_garantia).length,
+          )} pagos ordinarios activos`}
         />
         <SummaryCard
           label="Total egresado"
@@ -117,8 +119,8 @@ export default async function EventoFlujoDineroPage({
       <div className="grid gap-6 xl:grid-cols-2">
         <AgrupacionCard
           title="Ingresos por forma de pago"
-          description="Suma en pesos de pagos activos."
-          emptyDescription="No hay pagos activos para agrupar."
+          description="Suma en pesos de pagos ordinarios activos, sin garantias."
+          emptyDescription="No hay pagos ordinarios activos para agrupar."
           rows={flujo.ingresosPorFormaPago.map((row) => ({
             ...row,
             label: getFormaPagoLabel(row.label),
@@ -141,9 +143,9 @@ export default async function EventoFlujoDineroPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Ingresos</CardTitle>
+          <CardTitle>Movimientos de pagos</CardTitle>
           <CardDescription>
-            Pagos activos vinculados al evento, servicios o catering.
+            Pagos y garantias activos vinculados al evento, servicios o catering.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -164,7 +166,12 @@ export default async function EventoFlujoDineroPage({
                   <TableRow key={pago.id}>
                     <TableCell>{formatDate(pago.fecha_pago)}</TableCell>
                     <TableCell className="font-medium text-slate-950">
-                      {pago.concepto ?? "-"}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{pago.concepto ?? "-"}</span>
+                        {pago.es_garantia ? (
+                          <Badge variant="warning">Garantia</Badge>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>{getFormaPagoLabel(pago.forma_pago)}</TableCell>
                     <TableCell>
