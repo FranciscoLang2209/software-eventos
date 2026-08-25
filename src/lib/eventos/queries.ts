@@ -76,6 +76,15 @@ export async function listEventos() {
   };
 }
 
+export type EventoCalendario = Pick<
+  Tables<"eventos">,
+  "id" | "fecha_evento" | "cliente_nombre" | "estado" | "tipo_evento" | "salon_id"
+> & {
+  salones: Pick<Tables<"salones">, "id" | "nombre"> | null;
+};
+
+export type CalendarioSalonOption = Pick<Tables<"salones">, "id" | "nombre">;
+
 export async function getNuevoEventoPageData() {
   const profile = await getActiveProfile();
   const supabase = await createClient();
@@ -156,6 +165,97 @@ export async function getEventoById(id: string) {
     profile,
     evento: data as EventoDetalle,
   };
+}
+
+export async function getDashboardCalendarData(monthParam?: string) {
+  const profile = await getActiveProfile();
+  const supabase = await createClient();
+  const { year, monthIndex } = resolveMonth(monthParam);
+  const rangeStart = toISODate(year, monthIndex, 1);
+  const rangeEnd = toISODate(year, monthIndex + 1, 1);
+  const salones =
+    profile.rol === "admin"
+      ? await listActiveSalones()
+      : await getAssignedActiveSalones(profile.id);
+
+  if (profile.rol === "vendedor" && salones.length === 0) {
+    return {
+      profile,
+      year,
+      monthIndex,
+      eventos: [] as EventoCalendario[],
+      salones: [] as CalendarioSalonOption[],
+    };
+  }
+
+  const eventosQuery = supabase
+    .from("eventos")
+    .select(
+      "id, fecha_evento, cliente_nombre, estado, tipo_evento, salon_id, salones(id, nombre)",
+    )
+    .gte("fecha_evento", rangeStart)
+    .lt("fecha_evento", rangeEnd)
+    .is("deleted_at", null)
+    .order("fecha_evento", { ascending: true });
+
+  if (profile.rol === "vendedor") {
+    eventosQuery.in(
+      "salon_id",
+      salones.map((salon) => salon.id),
+    );
+  }
+
+  const eventosResult = await eventosQuery;
+
+  if (eventosResult.error) {
+    logSupabaseError("getDashboardCalendarData eventos", eventosResult.error);
+    throw new Error("No se pudieron obtener los eventos del mes.");
+  }
+
+  return {
+    profile,
+    year,
+    monthIndex,
+    eventos: eventosResult.data as EventoCalendario[],
+    salones: salones as CalendarioSalonOption[],
+  };
+}
+
+async function listActiveSalones() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("salones")
+    .select("id, nombre")
+    .eq("activo", true)
+    .is("deleted_at", null)
+    .order("nombre", { ascending: true });
+
+  if (error) {
+    logSupabaseError("listActiveSalones", error);
+    throw new Error("No se pudo obtener el listado de salones.");
+  }
+
+  return data;
+}
+
+function resolveMonth(monthParam?: string) {
+  const now = new Date();
+  let year = now.getUTCFullYear();
+  let monthIndex = now.getUTCMonth();
+
+  if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+    const [y, m] = monthParam.split("-").map(Number);
+    if (m >= 1 && m <= 12) {
+      year = y;
+      monthIndex = m - 1;
+    }
+  }
+
+  return { year, monthIndex };
+}
+
+function toISODate(year: number, monthIndex: number, day: number) {
+  return new Date(Date.UTC(year, monthIndex, day)).toISOString().slice(0, 10);
 }
 
 export async function getEditarEventoPageData(id: string) {
