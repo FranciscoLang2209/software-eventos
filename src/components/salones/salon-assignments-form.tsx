@@ -52,7 +52,7 @@ export function SalonAssignmentsForm({
               {salones.map((salon) => (
                 <label
                   key={salon.id}
-                  className="flex min-h-20 items-start gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm transition hover:border-slate-300 hover:bg-white"
+                  className="flex min-h-20 items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-3 text-sm transition-colors hover:border-teal-100 hover:bg-teal-50/50"
                 >
                   <input
                     name="salon_ids"
@@ -73,7 +73,7 @@ export function SalonAssignmentsForm({
               ))}
             </div>
           ) : (
-            <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6 text-sm text-slate-500">
               No hay salones activos disponibles para asignar.
             </div>
           )}

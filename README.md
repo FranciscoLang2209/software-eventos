@@ -39,10 +39,60 @@ Fill in `.env.local` with the Supabase project values.
 
 - `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Public anonymous key for browser and server clients using RLS.
-- `SUPABASE_SERVICE_ROLE_KEY`: Server-only key for future trusted backend operations.
+- `SUPABASE_SERVICE_ROLE_KEY`: Server-only key required by administrative user
+  creation and Auth synchronization.
 
 Never expose `SUPABASE_SERVICE_ROLE_KEY` in client components, browser bundles or
 public logs.
+
+## Administrative User Management
+
+Administrators manage users at `/admin/usuarios`. Creating a user uses the
+server-only Supabase Admin API and generates a strong temporary password. The
+password is displayed once after creation, is never stored in `public.usuarios`
+or `audit_log`, and must be communicated through a secure channel.
+
+Apply the user-management migration before deploying the application:
+
+```bash
+supabase db push
+```
+
+The migration adds transactional RPCs for profiles and salon assignments,
+protects the last active administrator, records user changes in the existing
+audit log, and removes direct authenticated writes to `usuarios` and
+`usuario_salon`. Inactive users are also banned through Supabase Auth; the
+middleware checks `usuarios.activo` on every application request as the primary
+application-level control. Administrators do not need salon assignments; any
+legacy assignments are removed when an administrator profile is saved.
+
+## Administrative Audit Log
+
+Administrators can inspect the immutable audit history at `/admin/auditoria`.
+The screen applies date, user, action, entity and record filters in Supabase,
+uses 25-row server-side pages, and renders field-level before/after comparisons.
+
+Apply `supabase/migrations/20260713110000_harden_audit_log.sql` before deploying
+this screen. The migration makes `audit_log` read-only for active administrators
+and records changes with PostgreSQL triggers on events, event services, payments,
+expenses, catering, users, venue assignments, venues, the service catalog and
+monthly service prices. The trigger obtains the actor from `auth.uid()`, ignores
+updates that only change `updated_at`, and recursively strips password, token,
+secret, credential and session-like fields.
+
+The repository has unit coverage for audit presentation, combined filter parsing
+and pagination. Database/RLS verification requires the local Supabase stack:
+
+1. Start Docker and run `pnpm supabase:start` followed by `pnpm supabase:reset`.
+2. As an administrator, create and edit an event, soft-delete it, change a user
+   role/status and add/remove a venue assignment; confirm each entry and actor in
+   `/admin/auditoria`.
+3. Sign in as a seller and confirm the route redirects to `/dashboard` and a
+   direct `select` from `audit_log` returns no rows/permission denied.
+4. As an authenticated user, confirm direct insert, update and delete operations
+   on `audit_log` are denied, while trigger-generated entries still succeed.
+5. Update only `updated_at` and confirm no entry is created; write a test row with
+   a token/password-like JSON key in an audited table and confirm it is stripped.
 
 ## Start Next.js
 
@@ -95,6 +145,21 @@ pnpm supabase:types
 ```
 
 The generated types are written to `src/types/database.types.ts`.
+
+## Monthly Service Prices Excel
+
+Admins can import monthly service prices from `/admin/precios-servicios`.
+The first worksheet must use these columns:
+
+| mes | año | salon | servicio | precio_base | iva_porcentaje | moneda |
+| --- | --- | --- | --- | --- | --- | --- |
+| 6 | 2026 | Salon Central | Salon | 1200000 | 21 | ARS |
+| 6 | 2026 |  | Tecnica Pack | 350000 | 21 | ARS |
+
+Required columns are `mes`, `año`, `servicio` and `precio_base`. `salon` is
+required for the `Salon` service and optional for packs. Supported currencies
+are `ARS`, `USD` and `EUR`; empty `moneda` defaults to `ARS`, and empty
+`iva_porcentaje` defaults to `0`.
 
 ## Connect To Vercel
 

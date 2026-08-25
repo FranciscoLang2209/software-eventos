@@ -1,6 +1,12 @@
 import { createEventoAction } from "@/app/(protected)/eventos/actions";
 import { EventoForm } from "@/components/eventos/evento-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { emptyEventoFormState } from "@/lib/eventos/validation";
@@ -27,6 +33,7 @@ export default async function NuevoEventoPage() {
           assignments={assignments}
           initialState={emptyEventoFormState}
           isAdmin={isAdmin}
+          mode="create"
           salones={salones}
           vendedores={vendedores}
         />
@@ -34,6 +41,9 @@ export default async function NuevoEventoPage() {
         <Card className="max-w-3xl">
           <CardHeader>
             <CardTitle>No hay datos disponibles para crear eventos</CardTitle>
+            <CardDescription>
+              Falta informacion operativa necesaria para completar el alta.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm leading-6 text-slate-600">

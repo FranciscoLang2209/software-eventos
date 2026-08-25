@@ -1,12 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import type { Database } from "@/types/database.types";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -32,6 +33,22 @@ export async function updateSession(request: NextRequest) {
   );
 
   const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims ?? null;
+  let accessDenied = false;
 
-  return { claims: data?.claims ?? null, response: supabaseResponse };
+  if (claims?.sub) {
+    const { data: profile, error } = await supabase
+      .from("usuarios")
+      .select("activo")
+      .eq("id", claims.sub)
+      .maybeSingle();
+
+    accessDenied = Boolean(error) || profile?.activo !== true;
+
+    if (accessDenied) {
+      await supabase.auth.signOut({ scope: "local" });
+    }
+  }
+
+  return { accessDenied, claims, response: supabaseResponse };
 }

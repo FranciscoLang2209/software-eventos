@@ -7,6 +7,7 @@ import { FieldError, FormAlert, Input, Label } from "@/components/ui/form";
 import { createClient } from "@/lib/supabase/client";
 
 type LoginFormProps = {
+  accessError?: string | null;
   redirectTo: string;
 };
 
@@ -46,7 +47,7 @@ function getLoginErrorMessage(message: string) {
   return "No pudimos iniciar sesion. Revisa los datos e intenta nuevamente.";
 }
 
-export function LoginForm({ redirectTo }: LoginFormProps) {
+export function LoginForm({ accessError, redirectTo }: LoginFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -95,6 +96,12 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       <p className="mt-3 text-sm leading-6 text-slate-600">
         Ingresa con tus credenciales para acceder al panel interno.
       </p>
+
+      {accessError ? (
+        <div className="mt-5">
+          <FormAlert>{accessError}</FormAlert>
+        </div>
+      ) : null}
 
       <form className="mt-6 space-y-5" noValidate onSubmit={handleSubmit}>
         <div>

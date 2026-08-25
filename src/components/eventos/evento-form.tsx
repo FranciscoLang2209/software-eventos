@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 import { SubmitButton } from "@/components/salones/submit-button";
+import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -11,20 +12,44 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 import {
   FieldError,
   FormAlert,
   Input,
   Label,
-  Select,
   Textarea,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   EventoSalon,
   EventoSalonAssignment,
   EventoVendedor,
 } from "@/lib/eventos/queries";
-import type { EventoFormState } from "@/lib/eventos/validation";
+import {
+  EVENT_SUBTYPES,
+  EVENT_TYPES,
+  generateEventoName,
+  isEventoTipo,
+} from "@/lib/eventos/types";
+import type {
+  EventoFormMode,
+  EventoFormState,
+} from "@/lib/eventos/validation";
+
+const NO_SUBTIPO_VALUE = "__sin_subtipo__";
+const EVENT_STATES = [
+  { label: "Borrador", value: "borrador" },
+  { label: "Confirmado", value: "confirmado" },
+  { label: "Realizado", value: "realizado" },
+  { label: "Cancelado", value: "cancelado" },
+];
 
 type EventoFormProps = {
   action: (
@@ -32,18 +57,26 @@ type EventoFormProps = {
     formData: FormData,
   ) => Promise<EventoFormState>;
   assignments: EventoSalonAssignment[];
+  cancelHref?: string;
   initialState: EventoFormState;
   isAdmin: boolean;
+  mode: EventoFormMode;
+  pendingLabel?: string;
   salones: EventoSalon[];
+  submitLabel?: string;
   vendedores: EventoVendedor[];
 };
 
 export function EventoForm({
   action,
   assignments,
+  cancelHref = "/eventos",
   initialState,
   isAdmin,
+  mode,
+  pendingLabel = "Creando...",
   salones,
+  submitLabel = "Crear evento",
   vendedores,
 }: EventoFormProps) {
   const [state, formAction] = useActionState(action, initialState);
@@ -53,6 +86,33 @@ export function EventoForm({
   const [selectedVendedorId, setSelectedVendedorId] = useState(
     state.fields.vendedor_id,
   );
+  const [selectedFechaEvento, setSelectedFechaEvento] = useState(
+    state.fields.fecha_evento,
+  );
+  const [selectedTipoEvento, setSelectedTipoEvento] = useState(
+    state.fields.tipo_evento,
+  );
+  const [selectedEstado, setSelectedEstado] = useState(state.fields.estado);
+  const [selectedSubtipoEvento, setSelectedSubtipoEvento] = useState(
+    state.fields.subtipo_evento,
+  );
+  const [selectedTieneOrganizador, setSelectedTieneOrganizador] = useState(
+    state.fields.tiene_organizador,
+  );
+
+  const selectedSalon = useMemo(
+    () => salones.find((salon) => salon.id === selectedSalonId),
+    [salones, selectedSalonId],
+  );
+  const availableSubtypes = isEventoTipo(selectedTipoEvento)
+    ? EVENT_SUBTYPES[selectedTipoEvento]
+    : [];
+  const generatedEventoName = generateEventoName({
+    fechaEvento: selectedFechaEvento,
+    salonNombre: selectedSalon?.nombre ?? "",
+    subtipoEvento: selectedSubtipoEvento,
+    tipoEvento: selectedTipoEvento,
+  });
 
   const assignedVendedores = useMemo(() => {
     if (isAdmin) {
@@ -73,8 +133,12 @@ export function EventoForm({
   }, [assignments, isAdmin, selectedSalonId, vendedores]);
 
   return (
-    <form action={formAction} className="max-w-5xl space-y-6" noValidate>
-      <Card>
+    <form
+      action={formAction}
+      className="flex max-w-5xl flex-col gap-6"
+      noValidate
+    >
+      <Card className={mode === "create" ? "order-1" : undefined}>
         <CardHeader>
           <CardTitle>Salon y responsable</CardTitle>
           <CardDescription>
@@ -86,30 +150,45 @@ export function EventoForm({
             <div>
               <Label htmlFor="salon_id">Salon</Label>
               <Select
-                id="salon_id"
                 name="salon_id"
                 required
                 value={selectedSalonId}
-                onChange={(event) => {
-                  setSelectedSalonId(event.target.value);
+                onValueChange={(value) => {
+                  setSelectedSalonId(value);
                   setSelectedVendedorId("");
                 }}
-                aria-invalid={Boolean(state.errors.salon_id)}
-                aria-describedby={
-                  state.errors.salon_id ? "salon_id-error" : undefined
-                }
               >
-                <option value="">Seleccionar salon</option>
-                {salones.map((salon) => (
-                  <option key={salon.id} value={salon.id}>
-                    {getSalonOptionLabel(salon)}
-                  </option>
-                ))}
+                <SelectTrigger
+                  id="salon_id"
+                  aria-invalid={Boolean(state.errors.salon_id)}
+                  aria-describedby={
+                    state.errors.salon_id ? "salon_id-error" : undefined
+                  }
+                >
+                  <SelectValue placeholder="Seleccionar salon" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salones.map((salon) => (
+                    <SelectItem key={salon.id} value={salon.id}>
+                      {getSalonOptionLabel(salon)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
               {state.errors.salon_id ? (
                 <FieldError id="salon_id-error">
                   {state.errors.salon_id}
                 </FieldError>
+              ) : null}
+              {isAdmin &&
+              mode === "edit" &&
+              selectedSalonId &&
+              selectedSalonId !== initialState.fields.salon_id ? (
+                <Alert variant="warning" className="mt-2 px-3 py-2">
+                  Al cambiar el salon no se recalculan ni sobrescriben valores
+                  financieros ya cargados. Revisa servicios, pagos y egresos
+                  asociados.
+                </Alert>
               ) : null}
             </div>
 
@@ -117,29 +196,36 @@ export function EventoForm({
               <div>
                 <Label htmlFor="vendedor_id">Vendedor responsable</Label>
                 <Select
-                  id="vendedor_id"
                   name="vendedor_id"
                   required
                   value={selectedVendedorId}
-                  onChange={(event) => setSelectedVendedorId(event.target.value)}
+                  onValueChange={setSelectedVendedorId}
                   disabled={!selectedSalonId}
-                  aria-invalid={Boolean(state.errors.vendedor_id)}
-                  aria-describedby={
-                    state.errors.vendedor_id
-                      ? "vendedor_id-error"
-                      : undefined
-                  }
                 >
-                  <option value="">
-                    {selectedSalonId
-                      ? "Seleccionar vendedor"
-                      : "Primero selecciona un salon"}
-                  </option>
-                  {assignedVendedores.map((vendedor) => (
-                    <option key={vendedor.id} value={vendedor.id}>
-                      {vendedor.full_name} - {vendedor.email}
-                    </option>
-                  ))}
+                  <SelectTrigger
+                    id="vendedor_id"
+                    aria-invalid={Boolean(state.errors.vendedor_id)}
+                    aria-describedby={
+                      state.errors.vendedor_id
+                        ? "vendedor_id-error"
+                        : undefined
+                    }
+                  >
+                    <SelectValue
+                      placeholder={
+                        selectedSalonId
+                          ? "Seleccionar vendedor"
+                          : "Primero selecciona un salon"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assignedVendedores.map((vendedor) => (
+                      <SelectItem key={vendedor.id} value={vendedor.id}>
+                        {vendedor.full_name} - {vendedor.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
                 {state.errors.vendedor_id ? (
                   <FieldError id="vendedor_id-error">
@@ -147,9 +233,9 @@ export function EventoForm({
                   </FieldError>
                 ) : null}
                 {selectedSalonId && assignedVendedores.length === 0 ? (
-                  <p className="mt-2 text-sm text-amber-700">
+                  <Alert variant="warning" className="mt-2 px-3 py-2">
                     Este salon no tiene vendedores asignados.
-                  </p>
+                  </Alert>
                 ) : null}
               </div>
             ) : null}
@@ -157,7 +243,7 @@ export function EventoForm({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={mode === "create" ? "order-3" : undefined}>
         <CardHeader>
           <CardTitle>Cliente</CardTitle>
           <CardDescription>
@@ -224,7 +310,7 @@ export function EventoForm({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={mode === "create" ? "order-2" : undefined}>
         <CardHeader>
           <CardTitle>Evento</CardTitle>
           <CardDescription>
@@ -235,12 +321,12 @@ export function EventoForm({
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
               <Label htmlFor="fecha_evento">Fecha del evento</Label>
-              <Input
+              <DatePickerField
                 id="fecha_evento"
                 name="fecha_evento"
-                type="date"
                 required
-                defaultValue={state.fields.fecha_evento}
+                value={selectedFechaEvento}
+                onValueChange={setSelectedFechaEvento}
                 aria-invalid={Boolean(state.errors.fecha_evento)}
                 aria-describedby={
                   state.errors.fecha_evento ? "fecha_evento-error" : undefined
@@ -253,32 +339,211 @@ export function EventoForm({
               ) : null}
             </div>
 
+            {mode === "create" ? (
+              <div>
+                <Label>Fecha de carga</Label>
+                <p className="mt-2 min-h-10 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-600">
+                  Se completara al crear el evento: {state.fields.fecha_carga}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="fecha_carga">Fecha de carga</Label>
+                <DatePickerField
+                  id="fecha_carga"
+                  name="fecha_carga"
+                  required
+                  defaultValue={state.fields.fecha_carga}
+                  aria-invalid={Boolean(state.errors.fecha_carga)}
+                  aria-describedby={
+                    state.errors.fecha_carga ? "fecha_carga-error" : undefined
+                  }
+                />
+                {state.errors.fecha_carga ? (
+                  <FieldError id="fecha_carga-error">
+                    {state.errors.fecha_carga}
+                  </FieldError>
+                ) : null}
+              </div>
+            )}
+
             <div>
-              <Label htmlFor="fecha_contrato">Fecha de contrato</Label>
-              <Input
-                id="fecha_contrato"
-                name="fecha_contrato"
-                type="date"
-                defaultValue={state.fields.fecha_contrato}
-                aria-invalid={Boolean(state.errors.fecha_contrato)}
+              <Label htmlFor="fecha_confirmacion_presupuesto">
+                Fecha de confirmacion de presupuesto
+              </Label>
+              <DatePickerField
+                id="fecha_confirmacion_presupuesto"
+                name="fecha_confirmacion_presupuesto"
+                defaultValue={state.fields.fecha_confirmacion_presupuesto}
+                aria-invalid={Boolean(
+                  state.errors.fecha_confirmacion_presupuesto,
+                )}
                 aria-describedby={
-                  state.errors.fecha_contrato
-                    ? "fecha_contrato-error"
+                  state.errors.fecha_confirmacion_presupuesto
+                    ? "fecha_confirmacion_presupuesto-error"
                     : undefined
                 }
               />
-              {state.errors.fecha_contrato ? (
-                <FieldError id="fecha_contrato-error">
-                  {state.errors.fecha_contrato}
+              {state.errors.fecha_confirmacion_presupuesto ? (
+                <FieldError id="fecha_confirmacion_presupuesto-error">
+                  {state.errors.fecha_confirmacion_presupuesto}
                 </FieldError>
               ) : null}
             </div>
 
-            <TextField
-              id="tipo_evento"
-              label="Tipo de evento"
-              defaultValue={state.fields.tipo_evento}
-            />
+            {mode === "create" ? (
+              <>
+                <div>
+                  <Label htmlFor="tipo_evento">Tipo de evento</Label>
+                  <Select
+                    name="tipo_evento"
+                    required
+                    value={selectedTipoEvento}
+                    onValueChange={(value) => {
+                      setSelectedTipoEvento(value);
+                      setSelectedSubtipoEvento("");
+                    }}
+                  >
+                    <SelectTrigger
+                      id="tipo_evento"
+                      aria-invalid={Boolean(state.errors.tipo_evento)}
+                      aria-describedby={
+                        state.errors.tipo_evento
+                          ? "tipo_evento-error"
+                          : undefined
+                      }
+                    >
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EVENT_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {state.errors.tipo_evento ? (
+                    <FieldError id="tipo_evento-error">
+                      {state.errors.tipo_evento}
+                    </FieldError>
+                  ) : null}
+                </div>
+
+                <div>
+                  <input
+                    type="hidden"
+                    name="subtipo_evento"
+                    value={selectedSubtipoEvento}
+                  />
+                  <Label htmlFor="subtipo_evento">Subtipo de evento</Label>
+                  <Select
+                    value={selectedSubtipoEvento || NO_SUBTIPO_VALUE}
+                    onValueChange={(value) =>
+                      setSelectedSubtipoEvento(
+                        value === NO_SUBTIPO_VALUE ? "" : value,
+                      )
+                    }
+                    disabled={!isEventoTipo(selectedTipoEvento)}
+                  >
+                    <SelectTrigger
+                      id="subtipo_evento"
+                      aria-invalid={Boolean(state.errors.subtipo_evento)}
+                      aria-describedby={
+                        state.errors.subtipo_evento
+                          ? "subtipo_evento-error"
+                          : undefined
+                      }
+                    >
+                      <SelectValue
+                        placeholder={
+                          selectedTipoEvento
+                            ? "Seleccionar subtipo"
+                            : "Primero selecciona un tipo"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_SUBTIPO_VALUE}>
+                        Sin subtipo
+                      </SelectItem>
+                      {availableSubtypes.map((subtype) => (
+                        <SelectItem key={subtype} value={subtype}>
+                          {subtype}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {state.errors.subtipo_evento ? (
+                    <FieldError id="subtipo_evento-error">
+                      {state.errors.subtipo_evento}
+                    </FieldError>
+                  ) : null}
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Label htmlFor="nombre_evento_preview">
+                    Nombre del evento
+                  </Label>
+                  <Input
+                    id="nombre_evento_preview"
+                    type="text"
+                    readOnly
+                    value={generatedEventoName}
+                    placeholder="Se generara con fecha, tipo y salon"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <TextField
+                  id="nombre_evento"
+                  label="Nombre del evento"
+                  defaultValue={state.fields.nombre_evento}
+                />
+                <TextField
+                  id="tipo_evento"
+                  label="Tipo de evento"
+                  defaultValue={state.fields.tipo_evento}
+                />
+                <TextField
+                  id="subtipo_evento"
+                  label="Subtipo de evento"
+                  defaultValue={state.fields.subtipo_evento}
+                />
+                <div>
+                  <Label htmlFor="estado">Estado</Label>
+                  <Select
+                    name="estado"
+                    required
+                    value={selectedEstado}
+                    onValueChange={setSelectedEstado}
+                  >
+                    <SelectTrigger
+                      id="estado"
+                      aria-invalid={Boolean(state.errors.estado)}
+                      aria-describedby={
+                        state.errors.estado ? "estado-error" : undefined
+                      }
+                    >
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EVENT_STATES.map((estado) => (
+                        <SelectItem key={estado.value} value={estado.value}>
+                          {estado.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {state.errors.estado ? (
+                    <FieldError id="estado-error">
+                      {state.errors.estado}
+                    </FieldError>
+                  ) : null}
+                </div>
+              </>
+            )}
             <TextField
               id="espacio"
               label="Espacio"
@@ -312,27 +577,89 @@ export function EventoForm({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={mode === "create" ? "order-4" : undefined}>
         <CardHeader>
           <CardTitle>Informacion comercial</CardTitle>
           <CardDescription>
-            Organizador externo, comision y observaciones iniciales.
+            Organizador externo y observaciones iniciales.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              id="organizador_externo"
-              label="Organizador externo"
-              defaultValue={state.fields.organizador_externo}
-            />
-            <NumberField
-              id="comision_organizador"
-              label="Comision organizador"
-              defaultValue={state.fields.comision_organizador}
-              error={state.errors.comision_organizador}
-              step="0.01"
-            />
+            <div>
+              <Label htmlFor="tiene_organizador">
+                ¿Tiene organizador externo?
+              </Label>
+              <Select
+                name="tiene_organizador"
+                value={selectedTieneOrganizador}
+                onValueChange={setSelectedTieneOrganizador}
+              >
+                <SelectTrigger id="tiene_organizador">
+                  <SelectValue placeholder="Seleccionar opcion" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">No</SelectItem>
+                  <SelectItem value="true">Si</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedTieneOrganizador === "true" ? (
+              <>
+                <div>
+                  <Label htmlFor="organizador_nombre">
+                    Nombre del organizador
+                  </Label>
+                  <Input
+                    id="organizador_nombre"
+                    name="organizador_nombre"
+                    type="text"
+                    required
+                    defaultValue={state.fields.organizador_nombre}
+                    aria-invalid={Boolean(state.errors.organizador_nombre)}
+                    aria-describedby={
+                      state.errors.organizador_nombre
+                        ? "organizador_nombre-error"
+                        : undefined
+                    }
+                  />
+                  {state.errors.organizador_nombre ? (
+                    <FieldError id="organizador_nombre-error">
+                      {state.errors.organizador_nombre}
+                    </FieldError>
+                  ) : null}
+                </div>
+
+                <div>
+                  <Label htmlFor="organizador_email">Email del organizador</Label>
+                  <Input
+                    id="organizador_email"
+                    name="organizador_email"
+                    type="email"
+                    defaultValue={state.fields.organizador_email}
+                    aria-invalid={Boolean(state.errors.organizador_email)}
+                    aria-describedby={
+                      state.errors.organizador_email
+                        ? "organizador_email-error"
+                        : undefined
+                    }
+                  />
+                  {state.errors.organizador_email ? (
+                    <FieldError id="organizador_email-error">
+                      {state.errors.organizador_email}
+                    </FieldError>
+                  ) : null}
+                </div>
+
+                <TextField
+                  id="organizador_telefono"
+                  label="Telefono del organizador"
+                  defaultValue={state.fields.organizador_telefono}
+                />
+              </>
+            ) : null}
+
             <div className="sm:col-span-2">
               <Label htmlFor="observaciones">Observaciones</Label>
               <Textarea
@@ -341,6 +668,17 @@ export function EventoForm({
                 rows={4}
                 defaultValue={state.fields.observaciones}
               />
+            </div>
+
+            <div className="sm:col-span-2 rounded-lg border border-slate-100 bg-slate-50/70 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-950">
+                Servicios que comisionan
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                {mode === "create"
+                  ? "Los servicios podran configurarse luego de crear el evento."
+                  : "Los servicios se configuran desde el detalle del evento."}
+              </p>
             </div>
           </div>
 
@@ -352,14 +690,20 @@ export function EventoForm({
         </CardContent>
       </Card>
 
-      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <div
+        className={
+          mode === "create"
+            ? "order-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
+            : "flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
+        }
+      >
         <Link
-          href="/eventos"
+          href={cancelHref}
           className={buttonVariants({ variant: "secondary" })}
         >
           Cancelar
         </Link>
-        <SubmitButton pendingLabel="Creando...">Crear evento</SubmitButton>
+        <SubmitButton pendingLabel={pendingLabel}>{submitLabel}</SubmitButton>
       </div>
     </form>
   );

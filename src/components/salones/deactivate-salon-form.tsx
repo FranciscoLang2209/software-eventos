@@ -5,43 +5,32 @@ import { buttonVariants } from "@/components/ui/button";
 
 type DeactivateSalonFormProps = {
   id: string;
-  disabled: boolean;
+  active: boolean;
   action: (formData: FormData) => void | Promise<void>;
 };
 
 export function DeactivateSalonForm({
   id,
-  disabled,
+  active,
   action,
 }: DeactivateSalonFormProps) {
-  if (disabled) {
-    return (
-      <button
-        type="button"
-        disabled
-        className={buttonVariants({
-          variant: "quiet",
-          size: "xs",
-          className: "text-slate-400",
-        })}
-      >
-        Desactivado
-      </button>
-    );
-  }
+  const nextActive = !active;
 
   return (
     <form action={action}>
       <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="active" value={String(nextActive)} />
       <SubmitButton
-        pendingLabel="Desactivando..."
+        pendingLabel={active ? "Desactivando..." : "Activando..."}
         className={buttonVariants({
-          variant: "danger",
+          variant: active ? "danger" : "outline",
           size: "xs",
-          className: "disabled:bg-red-50 disabled:text-red-400",
+          className: active
+            ? "disabled:bg-red-50 disabled:text-red-400"
+            : "disabled:bg-teal-50 disabled:text-teal-500",
         })}
       >
-        Desactivar
+        {active ? "Desactivar" : "Activar"}
       </SubmitButton>
     </form>
   );

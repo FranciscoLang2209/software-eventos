@@ -19,7 +19,7 @@ export function PageHeader({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">
           {eyebrow}
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
           {title}
         </h1>
         {description ? (
@@ -28,7 +28,11 @@ export function PageHeader({
           </p>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+          {actions}
+        </div>
+      ) : null}
     </div>
   );
 }

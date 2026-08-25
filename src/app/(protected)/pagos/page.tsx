@@ -12,7 +12,10 @@ export default function PagosPage() {
       />
       <div className="grid gap-4 md:grid-cols-3">
         {["Cobros", "Saldos", "Deudores"].map((item) => (
-          <Card key={item}>
+          <Card
+            key={item}
+            className="transition hover:border-teal-100 hover:shadow-md hover:shadow-teal-950/5"
+          >
             <CardContent>
               <div className="flex items-center justify-between gap-3">
                 <p className="font-medium text-slate-950">{item}</p>

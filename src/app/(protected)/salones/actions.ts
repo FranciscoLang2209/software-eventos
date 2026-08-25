@@ -69,28 +69,35 @@ export async function updateSalonAction(
   redirect("/salones?updated=1");
 }
 
-export async function deactivateSalonAction(formData: FormData) {
+export async function updateSalonStatusAction(formData: FormData) {
   await requireAdmin();
 
   const id = formData.get("id");
+  const active = formData.get("active");
 
   if (typeof id !== "string" || !id) {
     redirect("/salones?error=invalid-id");
   }
 
+  if (active !== "true" && active !== "false") {
+    redirect("/salones?error=invalid-status");
+  }
+
+  const isActive = active === "true";
   const supabase = await createClient();
   const { error } = await supabase
     .from("salones")
     .update({
-      activo: false,
-      deleted_at: new Date().toISOString(),
+      activo: isActive,
+      deleted_at: isActive ? null : new Date().toISOString(),
     })
     .eq("id", id);
 
   if (error) {
-    redirect("/salones?error=deactivate");
+    redirect("/salones?error=status");
   }
 
   revalidatePath("/salones");
-  redirect("/salones?deactivated=1");
+  revalidatePath("/salones/asignaciones");
+  redirect(isActive ? "/salones?activated=1" : "/salones?deactivated=1");
 }

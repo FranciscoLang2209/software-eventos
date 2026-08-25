@@ -367,9 +367,11 @@ export type Database = {
       evento_servicios: {
         Row: {
           adicionales_monto: number | null
+          comisiona_organizador: boolean
           created_at: string
           evento_id: string
           id: string
+          iva_base_imponible: number
           iva_porcentaje: number | null
           notas: string | null
           precio_base: number | null
@@ -383,34 +385,38 @@ export type Database = {
         }
         Insert: {
           adicionales_monto?: number | null
+          comisiona_organizador?: boolean
           created_at?: string
           evento_id: string
           id?: string
+          iva_base_imponible?: number
           iva_porcentaje?: number | null
           notas?: string | null
           precio_base?: number | null
           proveedor?: string | null
-          saldo_pendiente?: number | null
+          saldo_pendiente?: never
           servicio_id: string
-          total_con_iva?: number | null
+          total_con_iva?: never
           total_pagado?: number | null
-          total_sin_iva?: number | null
+          total_sin_iva?: never
           updated_at?: string
         }
         Update: {
           adicionales_monto?: number | null
+          comisiona_organizador?: boolean
           created_at?: string
           evento_id?: string
           id?: string
+          iva_base_imponible?: number
           iva_porcentaje?: number | null
           notas?: string | null
           precio_base?: number | null
           proveedor?: string | null
-          saldo_pendiente?: number | null
+          saldo_pendiente?: never
           servicio_id?: string
-          total_con_iva?: number | null
+          total_con_iva?: never
           total_pagado?: number | null
-          total_sin_iva?: number | null
+          total_sin_iva?: never
           updated_at?: string
         }
         Relationships: [
@@ -505,18 +511,26 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           espacio: string | null
+          fecha_carga: string
+          fecha_confirmacion_presupuesto: string | null
           estado: Database["public"]["Enums"]["estado_evento"]
           fecha_contrato: string | null
           fecha_evento: string
           id: string
+          nombre_evento: string | null
           observaciones: string | null
           organizador_externo: string | null
+          organizador_email: string | null
+          organizador_nombre: string | null
+          organizador_telefono: string | null
           pax_adultos: number | null
           pax_bebes: number | null
           pax_jovenes: number | null
           pax_menores: number | null
           salon_id: string
+          subtipo_evento: string | null
           tipo_evento: string | null
+          tiene_organizador: boolean
           updated_at: string
           vendedor_id: string
         }
@@ -532,18 +546,26 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           espacio?: string | null
+          fecha_carga?: string
+          fecha_confirmacion_presupuesto?: string | null
           estado?: Database["public"]["Enums"]["estado_evento"]
           fecha_contrato?: string | null
           fecha_evento: string
           id?: string
+          nombre_evento?: string | null
           observaciones?: string | null
           organizador_externo?: string | null
+          organizador_email?: string | null
+          organizador_nombre?: string | null
+          organizador_telefono?: string | null
           pax_adultos?: number | null
           pax_bebes?: number | null
           pax_jovenes?: number | null
           pax_menores?: number | null
           salon_id: string
+          subtipo_evento?: string | null
           tipo_evento?: string | null
+          tiene_organizador?: boolean
           updated_at?: string
           vendedor_id: string
         }
@@ -559,18 +581,26 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           espacio?: string | null
+          fecha_carga?: string
+          fecha_confirmacion_presupuesto?: string | null
           estado?: Database["public"]["Enums"]["estado_evento"]
           fecha_contrato?: string | null
           fecha_evento?: string
           id?: string
+          nombre_evento?: string | null
           observaciones?: string | null
           organizador_externo?: string | null
+          organizador_email?: string | null
+          organizador_nombre?: string | null
+          organizador_telefono?: string | null
           pax_adultos?: number | null
           pax_bebes?: number | null
           pax_jovenes?: number | null
           pax_menores?: number | null
           salon_id?: string
+          subtipo_evento?: string | null
           tipo_evento?: string | null
+          tiene_organizador?: boolean
           updated_at?: string
           vendedor_id?: string
         }
@@ -591,10 +621,117 @@ export type Database = {
           },
         ]
       }
+      egresos: {
+        Row: {
+          catering_contrato_id: string | null
+          categoria: string
+          concepto: string
+          created_at: string
+          deleted_at: string | null
+          evento_id: string
+          evento_servicio_id: string | null
+          fecha_egreso: string
+          forma_pago: Database["public"]["Enums"]["forma_pago"] | null
+          id: string
+          importe_en_pesos: number
+          importe_moneda_original: number
+          moneda: Database["public"]["Enums"]["moneda"]
+          notas: string | null
+          proveedor: string | null
+          registrado_por: string | null
+          tipo_cambio: number | null
+          updated_at: string
+        }
+        Insert: {
+          catering_contrato_id?: string | null
+          categoria: string
+          concepto: string
+          created_at?: string
+          deleted_at?: string | null
+          evento_id: string
+          evento_servicio_id?: string | null
+          fecha_egreso: string
+          forma_pago?: Database["public"]["Enums"]["forma_pago"] | null
+          id?: string
+          importe_en_pesos: number
+          importe_moneda_original: number
+          moneda?: Database["public"]["Enums"]["moneda"]
+          notas?: string | null
+          proveedor?: string | null
+          registrado_por?: string | null
+          tipo_cambio?: number | null
+          updated_at?: string
+        }
+        Update: {
+          catering_contrato_id?: string | null
+          categoria?: string
+          concepto?: string
+          created_at?: string
+          deleted_at?: string | null
+          evento_id?: string
+          evento_servicio_id?: string | null
+          fecha_egreso?: string
+          forma_pago?: Database["public"]["Enums"]["forma_pago"] | null
+          id?: string
+          importe_en_pesos?: number
+          importe_moneda_original?: number
+          moneda?: Database["public"]["Enums"]["moneda"]
+          notas?: string | null
+          proveedor?: string | null
+          registrado_por?: string | null
+          tipo_cambio?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "egresos_catering_contrato_id_fkey"
+            columns: ["catering_contrato_id"]
+            isOneToOne: false
+            referencedRelation: "catering_contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "v_anticipacion_reserva"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "v_resumen_evento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_evento_servicio_id_fkey"
+            columns: ["evento_servicio_id"]
+            isOneToOne: false
+            referencedRelation: "evento_servicios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "egresos_registrado_por_fkey"
+            columns: ["registrado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagos: {
         Row: {
           banco: string | null
           catering_contrato_id: string | null
+          concepto: string | null
           created_at: string
           deleted_at: string | null
           es_garantia: boolean
@@ -615,6 +752,7 @@ export type Database = {
         Insert: {
           banco?: string | null
           catering_contrato_id?: string | null
+          concepto?: string | null
           created_at?: string
           deleted_at?: string | null
           es_garantia?: boolean
@@ -635,6 +773,7 @@ export type Database = {
         Update: {
           banco?: string | null
           catering_contrato_id?: string | null
+          concepto?: string | null
           created_at?: string
           deleted_at?: string | null
           es_garantia?: boolean
@@ -763,6 +902,67 @@ export type Database = {
         }
         Relationships: []
       }
+      servicio_precios_mensuales: {
+        Row: {
+          created_at: string
+          id: string
+          importado_por: string | null
+          iva_porcentaje: number
+          moneda: Database["public"]["Enums"]["moneda"]
+          periodo: string
+          precio_base: number
+          salon_id: string | null
+          servicio_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          importado_por?: string | null
+          iva_porcentaje?: number
+          moneda?: Database["public"]["Enums"]["moneda"]
+          periodo: string
+          precio_base: number
+          salon_id?: string | null
+          servicio_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          importado_por?: string | null
+          iva_porcentaje?: number
+          moneda?: Database["public"]["Enums"]["moneda"]
+          periodo?: string
+          precio_base?: number
+          salon_id?: string | null
+          servicio_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servicio_precios_mensuales_importado_por_fkey"
+            columns: ["importado_por"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servicio_precios_mensuales_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servicio_precios_mensuales_servicio_id_fkey"
+            columns: ["servicio_id"]
+            isOneToOne: false
+            referencedRelation: "servicios_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       usuario_salon: {
         Row: {
           created_at: string
@@ -858,6 +1058,32 @@ export type Database = {
       }
     }
     Functions: {
+      audit_current_user_is_admin: { Args: never; Returns: boolean }
+      audit_sanitize_jsonb: { Args: { p_value: Json }; Returns: Json }
+      admin_create_usuario_profile: {
+        Args: {
+          p_activo: boolean
+          p_email: string
+          p_full_name: string
+          p_id: string
+          p_rol: Database["public"]["Enums"]["rol_usuario"]
+          p_salon_ids?: string[]
+        }
+        Returns: Database["public"]["Tables"]["usuarios"]["Row"]
+      }
+      admin_update_usuario: {
+        Args: {
+          p_activo: boolean
+          p_email: string
+          p_full_name: string
+          p_id: string
+          p_rol: Database["public"]["Enums"]["rol_usuario"]
+          p_salon_ids?: string[]
+        }
+        Returns: Database["public"]["Tables"]["usuarios"]["Row"]
+      }
+      current_user_is_active: { Args: never; Returns: boolean }
+      current_user_is_active_admin: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       set_usuario_salon_assignments: {
         Args: { p_usuario_id: string; p_salon_ids?: string[] }
@@ -875,7 +1101,14 @@ export type Database = {
       usuario_tiene_salon: { Args: { p_salon_id: string }; Returns: boolean }
     }
     Enums: {
-      accion_audit: "INSERT" | "UPDATE" | "DELETE"
+      accion_audit:
+        | "INSERT"
+        | "UPDATE"
+        | "DELETE"
+        | "SOFT_DELETE"
+        | "RESTORE"
+        | "ASSIGN"
+        | "UNASSIGN"
       categoria_catering_item:
         | "alimentos"
         | "bebidas_alcoholicas"
@@ -1034,7 +1267,15 @@ export const Constants = {
   },
   public: {
     Enums: {
-      accion_audit: ["INSERT", "UPDATE", "DELETE"],
+      accion_audit: [
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "SOFT_DELETE",
+        "RESTORE",
+        "ASSIGN",
+        "UNASSIGN",
+      ],
       categoria_catering_item: [
         "alimentos",
         "bebidas_alcoholicas",
