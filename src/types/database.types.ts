@@ -137,17 +137,22 @@ export type Database = {
       }
       catering_contratos: {
         Row: {
+          cliente_contacto: string | null
+          cliente_cuit_dni: string | null
+          cliente_nombre: string | null
+          cliente_razon_social: string | null
           comision_organizador_monto: number | null
           created_at: string
           deleted_at: string | null
           ejecutiva_id: string | null
           emite_factura: boolean | null
-          evento_id: string
+          evento_id: string | null
           factura_concepto: string | null
           factura_contacto_admin: string | null
           factura_cuit: string | null
           factura_direccion: string | null
           factura_razon_social: string | null
+          fecha_evento: string | null
           id: string
           iva_comision: number | null
           iva_porcentaje: number | null
@@ -164,6 +169,8 @@ export type Database = {
           precio_cierre_alimentos_sin_iva: number | null
           precio_cierre_bebidas_sin_iva: number | null
           saldo_pendiente: number | null
+          salon_id: string | null
+          tipo_evento: string | null
           tipo_servicio: string | null
           total_con_iva: number | null
           total_pagado: number | null
@@ -171,17 +178,22 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cliente_contacto?: string | null
+          cliente_cuit_dni?: string | null
+          cliente_nombre?: string | null
+          cliente_razon_social?: string | null
           comision_organizador_monto?: number | null
           created_at?: string
           deleted_at?: string | null
           ejecutiva_id?: string | null
           emite_factura?: boolean | null
-          evento_id: string
+          evento_id?: string | null
           factura_concepto?: string | null
           factura_contacto_admin?: string | null
           factura_cuit?: string | null
           factura_direccion?: string | null
           factura_razon_social?: string | null
+          fecha_evento?: string | null
           id?: string
           iva_comision?: number | null
           iva_porcentaje?: number | null
@@ -198,6 +210,8 @@ export type Database = {
           precio_cierre_alimentos_sin_iva?: number | null
           precio_cierre_bebidas_sin_iva?: number | null
           saldo_pendiente?: number | null
+          salon_id?: string | null
+          tipo_evento?: string | null
           tipo_servicio?: string | null
           total_con_iva?: number | null
           total_pagado?: number | null
@@ -205,17 +219,22 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cliente_contacto?: string | null
+          cliente_cuit_dni?: string | null
+          cliente_nombre?: string | null
+          cliente_razon_social?: string | null
           comision_organizador_monto?: number | null
           created_at?: string
           deleted_at?: string | null
           ejecutiva_id?: string | null
           emite_factura?: boolean | null
-          evento_id?: string
+          evento_id?: string | null
           factura_concepto?: string | null
           factura_contacto_admin?: string | null
           factura_cuit?: string | null
           factura_direccion?: string | null
           factura_razon_social?: string | null
+          fecha_evento?: string | null
           id?: string
           iva_comision?: number | null
           iva_porcentaje?: number | null
@@ -232,6 +251,8 @@ export type Database = {
           precio_cierre_alimentos_sin_iva?: number | null
           precio_cierre_bebidas_sin_iva?: number | null
           saldo_pendiente?: number | null
+          salon_id?: string | null
+          tipo_evento?: string | null
           tipo_servicio?: string | null
           total_con_iva?: number | null
           total_pagado?: number | null
@@ -265,6 +286,70 @@ export type Database = {
             columns: ["evento_id"]
             isOneToOne: false
             referencedRelation: "v_resumen_evento"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catering_contratos_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catering_precio_historial: {
+        Row: {
+          catering_contrato_id: string
+          created_at: string
+          fecha: string
+          id: string
+          motivo: string | null
+          pax_adultos: number | null
+          pax_bebes: number | null
+          pax_jovenes: number | null
+          pax_menores: number | null
+          precio_unitario: number
+          usuario_id: string | null
+        }
+        Insert: {
+          catering_contrato_id: string
+          created_at?: string
+          fecha?: string
+          id?: string
+          motivo?: string | null
+          pax_adultos?: number | null
+          pax_bebes?: number | null
+          pax_jovenes?: number | null
+          pax_menores?: number | null
+          precio_unitario: number
+          usuario_id?: string | null
+        }
+        Update: {
+          catering_contrato_id?: string
+          created_at?: string
+          fecha?: string
+          id?: string
+          motivo?: string | null
+          pax_adultos?: number | null
+          pax_bebes?: number | null
+          pax_jovenes?: number | null
+          pax_menores?: number | null
+          precio_unitario?: number
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catering_precio_historial_catering_contrato_id_fkey"
+            columns: ["catering_contrato_id"]
+            isOneToOne: false
+            referencedRelation: "catering_contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catering_precio_historial_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
             referencedColumns: ["id"]
           },
         ]
@@ -628,7 +713,7 @@ export type Database = {
           concepto: string
           created_at: string
           deleted_at: string | null
-          evento_id: string
+          evento_id: string | null
           evento_servicio_id: string | null
           fecha_egreso: string
           forma_pago: Database["public"]["Enums"]["forma_pago"] | null
@@ -648,7 +733,7 @@ export type Database = {
           concepto: string
           created_at?: string
           deleted_at?: string | null
-          evento_id: string
+          evento_id?: string | null
           evento_servicio_id?: string | null
           fecha_egreso: string
           forma_pago?: Database["public"]["Enums"]["forma_pago"] | null
@@ -668,7 +753,7 @@ export type Database = {
           concepto?: string
           created_at?: string
           deleted_at?: string | null
-          evento_id?: string
+          evento_id?: string | null
           evento_servicio_id?: string | null
           fecha_egreso?: string
           forma_pago?: Database["public"]["Enums"]["forma_pago"] | null
@@ -735,7 +820,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           es_garantia: boolean
-          evento_id: string
+          evento_id: string | null
           evento_servicio_id: string | null
           fecha_pago: string
           forma_pago: Database["public"]["Enums"]["forma_pago"]
@@ -756,7 +841,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           es_garantia?: boolean
-          evento_id: string
+          evento_id?: string | null
           evento_servicio_id?: string | null
           fecha_pago: string
           forma_pago: Database["public"]["Enums"]["forma_pago"]
@@ -777,7 +862,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           es_garantia?: boolean
-          evento_id?: string
+          evento_id?: string | null
           evento_servicio_id?: string | null
           fecha_pago?: string
           forma_pago?: Database["public"]["Enums"]["forma_pago"]
@@ -1060,6 +1145,17 @@ export type Database = {
     Functions: {
       audit_current_user_is_admin: { Args: never; Returns: boolean }
       audit_sanitize_jsonb: { Args: { p_value: Json }; Returns: Json }
+      catering_buscar_eventos: {
+        Args: { p_query: string; p_evento_id?: string | null }
+        Returns: {
+          id: string
+          cliente_nombre: string | null
+          fecha_evento: string | null
+          salon_id: string
+          salon_nombre: string
+        }[]
+      }
+      catering_evento_existe: { Args: { p_evento_id: string }; Returns: boolean }
       admin_create_usuario_profile: {
         Args: {
           p_activo: boolean
@@ -1135,7 +1231,7 @@ export type Database = {
         | "cheque"
         | "retenciones"
       moneda: "ARS" | "USD" | "EUR"
-      rol_usuario: "admin" | "vendedor"
+      rol_usuario: "admin" | "vendedor" | "ejecutiva_catering"
       tipo_actualizacion: "ipc" | "porcentaje_fijo"
     }
     CompositeTypes: {
@@ -1305,7 +1401,7 @@ export const Constants = {
         "retenciones",
       ],
       moneda: ["ARS", "USD", "EUR"],
-      rol_usuario: ["admin", "vendedor"],
+      rol_usuario: ["admin", "vendedor", "ejecutiva_catering"],
       tipo_actualizacion: ["ipc", "porcentaje_fijo"],
     },
   },

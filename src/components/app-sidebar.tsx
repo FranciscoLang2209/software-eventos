@@ -8,6 +8,7 @@ import {
   ScrollText,
   Settings,
   Store,
+  UtensilsCrossed,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +25,7 @@ const navigation = [
     icon: LayoutDashboard,
   },
   { name: "Eventos", href: "/eventos", group: "Operacion", icon: CalendarDays },
+  { name: "Catering", href: "/catering", group: "Operacion", icon: UtensilsCrossed },
   { name: "Salones", href: "/salones", group: "Gestion", icon: Store },
   { name: "Pagos", href: "/pagos", group: "Finanzas", icon: Landmark },
   { name: "Reportes", href: "/reportes", group: "Finanzas", icon: BarChart3 },

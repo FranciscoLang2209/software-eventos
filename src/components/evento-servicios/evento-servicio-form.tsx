@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { SubmitButton } from "@/components/salones/submit-button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   checkboxClassName,
   FieldError,
@@ -31,6 +33,7 @@ type EventoServicioFormProps = {
     formData: FormData,
   ) => Promise<EventoServicioFormState>;
   catalogo: ServicioCatalogoOption[];
+  eventoId?: string;
   formId: string;
   initialState: EventoServicioFormState;
   monthlyPriceSuggestions?: MonthlyServicePriceSuggestions;
@@ -38,11 +41,13 @@ type EventoServicioFormProps = {
   tieneOrganizador: boolean;
   submitLabel: string;
   submittingLabel: string;
+  variant?: "create" | "edit";
 };
 
 export function EventoServicioForm({
   action,
   catalogo,
+  eventoId,
   formId,
   initialState,
   monthlyPriceSuggestions = {},
@@ -50,6 +55,7 @@ export function EventoServicioForm({
   tieneOrganizador,
   submitLabel,
   submittingLabel,
+  variant = "edit",
 }: EventoServicioFormProps) {
   const [state, formAction] = useActionState(action, initialState);
   const renderedState =
@@ -61,6 +67,7 @@ export function EventoServicioForm({
     <EventoServicioFormFields
       key={getFormStateKey(renderedState)}
       catalogo={catalogo}
+      eventoId={eventoId}
       formAction={formAction}
       formId={formId}
       monthlyPriceSuggestions={monthlyPriceSuggestions}
@@ -68,12 +75,14 @@ export function EventoServicioForm({
       tieneOrganizador={tieneOrganizador}
       submitLabel={submitLabel}
       submittingLabel={submittingLabel}
+      variant={variant}
     />
   );
 }
 
 function EventoServicioFormFields({
   catalogo,
+  eventoId,
   formAction,
   formId,
   monthlyPriceSuggestions,
@@ -81,8 +90,10 @@ function EventoServicioFormFields({
   tieneOrganizador,
   submitLabel,
   submittingLabel,
+  variant,
 }: {
   catalogo: ServicioCatalogoOption[];
+  eventoId?: string;
   formAction: (formData: FormData) => void;
   formId: string;
   monthlyPriceSuggestions: MonthlyServicePriceSuggestions;
@@ -90,6 +101,7 @@ function EventoServicioFormFields({
   tieneOrganizador: boolean;
   submitLabel: string;
   submittingLabel: string;
+  variant: "create" | "edit";
 }) {
   const isCatalogoEmpty = catalogo.length === 0;
   const servicioSelectValue = state.fields.servicio_id;
@@ -123,6 +135,11 @@ function EventoServicioFormFields({
       setIvaPorcentaje(formatFormNumber(rateToPercentage(suggestion.iva_porcentaje)));
     }
   }
+
+  const selectedCategoria = catalogo.find(
+    (servicio) => servicio.id === servicioId,
+  )?.categoria;
+  const isCateringSelected = variant === "create" && selectedCategoria === "catering";
 
   return (
     <form action={formAction} className="space-y-5" noValidate>
@@ -168,142 +185,164 @@ function EventoServicioFormFields({
           ) : null}
         </div>
 
-        <div>
-          <Label htmlFor={`${formId}-proveedor`}>Proveedor</Label>
-          <Input
-            id={`${formId}-proveedor`}
-            name="proveedor"
-            type="text"
-            defaultValue={state.fields.proveedor}
-          />
-        </div>
+        {isCateringSelected ? (
+          <div className="md:col-span-2 rounded-lg border border-teal-100 bg-teal-50/60 p-4 sm:p-5">
+            <h3 className="text-sm font-semibold text-slate-950">
+              El catering se carga con su propio flujo
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              PAX, historial de precio por persona, adicionales, comision e IVA se cargan en
+              la pantalla completa de catering, ya vinculada a este evento. Una vez guardado
+              va a aparecer aca, en &quot;Valores del evento&quot;, y tambien en la seccion
+              de Catering.
+            </p>
+            <Link
+              href={eventoId ? `/catering/nuevo?evento_id=${eventoId}` : "/catering/nuevo"}
+              className={buttonVariants({ variant: "primary", className: "mt-4" })}
+            >
+              Cargar catering completo
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div>
+              <Label htmlFor={`${formId}-proveedor`}>Proveedor</Label>
+              <Input
+                id={`${formId}-proveedor`}
+                name="proveedor"
+                type="text"
+                defaultValue={state.fields.proveedor}
+              />
+            </div>
 
-        <div>
-          <Label htmlFor={`${formId}-precio_base`}>Precio base</Label>
-          <Input
-            id={`${formId}-precio_base`}
-            name="precio_base"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            value={precioBase}
-            onChange={(event) => setPrecioBase(event.target.value)}
-            aria-invalid={Boolean(state.errors.precio_base)}
-            aria-describedby={
-              state.errors.precio_base
-                ? `${formId}-precio_base-error`
-                : undefined
-            }
-          />
-          {state.errors.precio_base ? (
-            <FieldError id={`${formId}-precio_base-error`}>
-              {state.errors.precio_base}
-            </FieldError>
-          ) : null}
-          <MonthlyPriceHint
-            formId={formId}
-            hasSelectedService={Boolean(servicioId)}
-            suggestion={selectedSuggestion}
-          />
-        </div>
+            <div>
+              <Label htmlFor={`${formId}-precio_base`}>Precio base</Label>
+              <Input
+                id={`${formId}-precio_base`}
+                name="precio_base"
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                value={precioBase}
+                onChange={(event) => setPrecioBase(event.target.value)}
+                aria-invalid={Boolean(state.errors.precio_base)}
+                aria-describedby={
+                  state.errors.precio_base
+                    ? `${formId}-precio_base-error`
+                    : undefined
+                }
+              />
+              {state.errors.precio_base ? (
+                <FieldError id={`${formId}-precio_base-error`}>
+                  {state.errors.precio_base}
+                </FieldError>
+              ) : null}
+              <MonthlyPriceHint
+                formId={formId}
+                hasSelectedService={Boolean(servicioId)}
+                suggestion={selectedSuggestion}
+              />
+            </div>
 
-        <div>
-          <Label htmlFor={`${formId}-adicionales_monto`}>Adicionales</Label>
-          <Input
-            id={`${formId}-adicionales_monto`}
-            name="adicionales_monto"
-            type="number"
-            min="0"
-            step="0.01"
-            defaultValue={state.fields.adicionales_monto}
-            aria-invalid={Boolean(state.errors.adicionales_monto)}
-            aria-describedby={
-              state.errors.adicionales_monto
-                ? `${formId}-adicionales_monto-error`
-                : undefined
-            }
-          />
-          {state.errors.adicionales_monto ? (
-            <FieldError id={`${formId}-adicionales_monto-error`}>
-              {state.errors.adicionales_monto}
-            </FieldError>
-          ) : null}
-        </div>
+            <div>
+              <Label htmlFor={`${formId}-adicionales_monto`}>Adicionales</Label>
+              <Input
+                id={`${formId}-adicionales_monto`}
+                name="adicionales_monto"
+                type="number"
+                min="0"
+                step="0.01"
+                defaultValue={state.fields.adicionales_monto}
+                aria-invalid={Boolean(state.errors.adicionales_monto)}
+                aria-describedby={
+                  state.errors.adicionales_monto
+                    ? `${formId}-adicionales_monto-error`
+                    : undefined
+                }
+              />
+              {state.errors.adicionales_monto ? (
+                <FieldError id={`${formId}-adicionales_monto-error`}>
+                  {state.errors.adicionales_monto}
+                </FieldError>
+              ) : null}
+            </div>
 
-        <div>
-          <Label htmlFor={`${formId}-iva_base_imponible`}>
-            Base imponible IVA
-          </Label>
-          <Input
-            id={`${formId}-iva_base_imponible`}
-            name="iva_base_imponible"
-            type="number"
-            min="0"
-            step="0.01"
-            value={ivaBaseImponible}
-            onChange={(event) => setIvaBaseImponible(event.target.value)}
-            aria-invalid={Boolean(state.errors.iva_base_imponible)}
-            aria-describedby={
-              state.errors.iva_base_imponible
-                ? `${formId}-iva_base_imponible-error`
-                : undefined
-            }
-          />
-          {state.errors.iva_base_imponible ? (
-            <FieldError id={`${formId}-iva_base_imponible-error`}>
-              {state.errors.iva_base_imponible}
-            </FieldError>
-          ) : null}
-        </div>
+            <div>
+              <Label htmlFor={`${formId}-iva_base_imponible`}>
+                Base imponible IVA
+              </Label>
+              <Input
+                id={`${formId}-iva_base_imponible`}
+                name="iva_base_imponible"
+                type="number"
+                min="0"
+                step="0.01"
+                value={ivaBaseImponible}
+                onChange={(event) => setIvaBaseImponible(event.target.value)}
+                aria-invalid={Boolean(state.errors.iva_base_imponible)}
+                aria-describedby={
+                  state.errors.iva_base_imponible
+                    ? `${formId}-iva_base_imponible-error`
+                    : undefined
+                }
+              />
+              {state.errors.iva_base_imponible ? (
+                <FieldError id={`${formId}-iva_base_imponible-error`}>
+                  {state.errors.iva_base_imponible}
+                </FieldError>
+              ) : null}
+            </div>
 
-        <div>
-          <Label htmlFor={`${formId}-iva_porcentaje`}>IVA %</Label>
-          <Input
-            id={`${formId}-iva_porcentaje`}
-            name="iva_porcentaje"
-            type="number"
-            min="0"
-            max="100"
-            step="0.01"
-            value={ivaPorcentaje}
-            onChange={(event) => setIvaPorcentaje(event.target.value)}
-            aria-invalid={Boolean(state.errors.iva_porcentaje)}
-            aria-describedby={
-              state.errors.iva_porcentaje
-                ? `${formId}-iva_porcentaje-error`
-                : undefined
-            }
-          />
-          {state.errors.iva_porcentaje ? (
-            <FieldError id={`${formId}-iva_porcentaje-error`}>
-              {state.errors.iva_porcentaje}
-            </FieldError>
-          ) : null}
-        </div>
+            <div>
+              <Label htmlFor={`${formId}-iva_porcentaje`}>IVA %</Label>
+              <Input
+                id={`${formId}-iva_porcentaje`}
+                name="iva_porcentaje"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={ivaPorcentaje}
+                onChange={(event) => setIvaPorcentaje(event.target.value)}
+                aria-invalid={Boolean(state.errors.iva_porcentaje)}
+                aria-describedby={
+                  state.errors.iva_porcentaje
+                    ? `${formId}-iva_porcentaje-error`
+                    : undefined
+                }
+              />
+              {state.errors.iva_porcentaje ? (
+                <FieldError id={`${formId}-iva_porcentaje-error`}>
+                  {state.errors.iva_porcentaje}
+                </FieldError>
+              ) : null}
+            </div>
 
-        <div className="md:col-span-2">
-          <Label htmlFor={`${formId}-notas`}>Notas</Label>
-          <Textarea
-            id={`${formId}-notas`}
-            name="notas"
-            rows={3}
-            defaultValue={state.fields.notas}
-          />
-        </div>
+            <div className="md:col-span-2">
+              <Label htmlFor={`${formId}-notas`}>Notas</Label>
+              <Textarea
+                id={`${formId}-notas`}
+                name="notas"
+                rows={3}
+                defaultValue={state.fields.notas}
+              />
+            </div>
 
-        {tieneOrganizador ? (
-          <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-3 text-sm font-medium text-slate-700 transition-colors hover:border-teal-100 hover:bg-teal-50/50">
-            <input
-              name="comisiona_organizador"
-              type="checkbox"
-              value="true"
-              defaultChecked={state.fields.comisiona_organizador}
-              className={checkboxClassName}
-            />
-            Comisiona organizador
-          </label>
-        ) : null}
+            {tieneOrganizador ? (
+              <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-3 text-sm font-medium text-slate-700 transition-colors hover:border-teal-100 hover:bg-teal-50/50">
+                <input
+                  name="comisiona_organizador"
+                  type="checkbox"
+                  value="true"
+                  defaultChecked={state.fields.comisiona_organizador}
+                  className={checkboxClassName}
+                />
+                Comisiona organizador
+              </label>
+            ) : null}
+          </>
+        )}
       </div>
 
       {state.formError ? <FormAlert>{state.formError}</FormAlert> : null}
@@ -311,9 +350,11 @@ function EventoServicioFormFields({
         <FormAlert variant="success">{state.successMessage}</FormAlert>
       ) : null}
 
-      <div className="flex justify-end">
-        <SubmitButton pendingLabel={submittingLabel}>{submitLabel}</SubmitButton>
-      </div>
+      {isCateringSelected ? null : (
+        <div className="flex justify-end">
+          <SubmitButton pendingLabel={submittingLabel}>{submitLabel}</SubmitButton>
+        </div>
+      )}
     </form>
   );
 }

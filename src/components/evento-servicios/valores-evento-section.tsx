@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   createEventoServicioAction,
   deleteEventoServicioAction,
@@ -5,6 +6,7 @@ import {
 } from "@/app/(protected)/evento-servicios/actions";
 import { DeleteEventoServicioForm } from "@/components/evento-servicios/delete-evento-servicio-form";
 import { EventoServicioForm } from "@/components/evento-servicios/evento-servicio-form";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import type { EventoCateringItem } from "@/lib/catering/queries";
 import type {
   EventoServicioMonthlyPriceSuggestions,
   EventoServicioItem,
@@ -27,6 +30,7 @@ import {
 
 type ValoresEventoSectionProps = {
   catalogo: ServicioCatalogoOption[];
+  caterings?: EventoCateringItem[];
   eventoId: string;
   monthlyPriceSuggestions: EventoServicioMonthlyPriceSuggestions;
   servicios: EventoServicioItem[];
@@ -36,12 +40,17 @@ type ValoresEventoSectionProps = {
 
 export function ValoresEventoSection({
   catalogo,
+  caterings = [],
   eventoId,
   monthlyPriceSuggestions,
   servicios,
   tieneOrganizador,
   totalEvento,
 }: ValoresEventoSectionProps) {
+  const totalCatering = caterings.reduce(
+    (total, catering) => total + (catering.total_con_iva ?? 0),
+    0,
+  );
   const gridClassName = tieneOrganizador
     ? "xl:grid-cols-[1.3fr_0.9fr_0.7fr_repeat(7,minmax(0,0.75fr))_auto]"
     : "xl:grid-cols-[1.3fr_0.9fr_repeat(7,minmax(0,0.75fr))_auto]";
@@ -55,13 +64,25 @@ export function ValoresEventoSection({
             Servicios facturables pactados para calcular el total del evento.
           </CardDescription>
         </div>
-        <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-4 py-3 text-right">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-            Total servicios
-          </p>
-          <p className="mt-1 text-lg font-semibold text-slate-950">
-            {formatCurrency(totalEvento)}
-          </p>
+        <div className="flex flex-wrap gap-3">
+          <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-4 py-3 text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Total servicios
+            </p>
+            <p className="mt-1 text-lg font-semibold text-slate-950">
+              {formatCurrency(totalEvento)}
+            </p>
+          </div>
+          {caterings.length > 0 ? (
+            <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-4 py-3 text-right">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Total general (con catering)
+              </p>
+              <p className="mt-1 text-lg font-semibold text-slate-950">
+                {formatCurrency(totalEvento + totalCatering)}
+              </p>
+            </div>
+          ) : null}
         </div>
       </CardHeader>
       <CardContent className="space-y-8">
@@ -223,6 +244,63 @@ export function ValoresEventoSection({
           )}
         </div>
 
+        {caterings.length > 0 ? (
+          <div>
+            <h3 className="text-sm font-semibold text-slate-950">Catering vinculado</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Cargado desde la seccion de Catering; el detalle completo esta ahi.
+            </p>
+            <div className="mt-4 rounded-lg border border-slate-100 bg-white">
+              <div className="divide-y divide-slate-100">
+                {caterings.map((catering) => (
+                  <div
+                    key={catering.id}
+                    className="grid gap-4 px-5 py-4 sm:grid-cols-[1fr_repeat(3,minmax(0,0.6fr))_auto] sm:items-center"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-950">
+                        {catering.tipo_servicio ?? "Catering"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        PAX{" "}
+                        {(catering.pax_adultos ?? 0) +
+                          (catering.pax_jovenes ?? 0) +
+                          (catering.pax_menores ?? 0) +
+                          (catering.pax_bebes ?? 0)}
+                      </p>
+                    </div>
+                    <ValueItem
+                      align="right"
+                      label="Total"
+                      strong
+                      value={formatCurrencyValue(catering.total_con_iva)}
+                    />
+                    <ValueItem
+                      align="right"
+                      label="Pagado"
+                      value={formatCurrencyValue(catering.total_pagado)}
+                    />
+                    <ValueItem
+                      align="right"
+                      label="Saldo"
+                      strong
+                      value={formatCurrencyValue(catering.saldo_pendiente)}
+                    />
+                    <div className="flex justify-end">
+                      <Link
+                        href={`/catering/${catering.id}`}
+                        className={buttonVariants({ variant: "secondary", size: "xs" })}
+                      >
+                        Ver detalle
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-4 sm:p-5">
           <h3 className="text-sm font-semibold text-slate-950">
             Agregar servicio facturable
@@ -231,6 +309,7 @@ export function ValoresEventoSection({
             <EventoServicioForm
               action={createEventoServicioAction.bind(null, eventoId)}
               catalogo={catalogo}
+              eventoId={eventoId}
               formId="evento-servicio-nuevo"
               initialState={getEmptyEventoServicioFormState()}
               monthlyPriceSuggestions={monthlyPriceSuggestions}
@@ -238,6 +317,7 @@ export function ValoresEventoSection({
               tieneOrganizador={tieneOrganizador}
               submitLabel="Agregar servicio"
               submittingLabel="Agregando..."
+              variant="create"
             />
           </div>
         </div>

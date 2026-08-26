@@ -1,0 +1,189 @@
+"use client";
+
+import { useActionState, useEffect, useRef } from "react";
+import { SubmitButton } from "@/components/salones/submit-button";
+import { DatePickerField } from "@/components/ui/date-picker-field";
+import {
+  FieldError,
+  FormAlert,
+  Input,
+  Label,
+  Textarea,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { egresoFormaPagoOptions, type EgresoFormState } from "@/lib/egresos/validation";
+
+type CateringEgresoFormProps = {
+  action: (
+    previousState: EgresoFormState,
+    formData: FormData,
+  ) => Promise<EgresoFormState>;
+  initialState: EgresoFormState;
+};
+
+export function CateringEgresoForm({ action, initialState }: CateringEgresoFormProps) {
+  const [state, formAction] = useActionState(action, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const formaPagoValue = state.fields.forma_pago || "sin_especificar";
+
+  useEffect(() => {
+    if (state.successMessage) {
+      formRef.current?.reset();
+    }
+  }, [state.successMessage]);
+
+  return (
+    <form ref={formRef} action={formAction} className="space-y-5" noValidate>
+      <div className="grid gap-5 md:grid-cols-2">
+        <div>
+          <Label htmlFor="categoria">Categoria</Label>
+          <Input
+            id="categoria"
+            name="categoria"
+            type="text"
+            required
+            defaultValue={state.fields.categoria}
+            placeholder="Alimentos, bebidas, proveedor..."
+            aria-invalid={Boolean(state.errors.categoria)}
+            aria-describedby={state.errors.categoria ? "categoria-error" : undefined}
+          />
+          {state.errors.categoria ? (
+            <FieldError id="categoria-error">{state.errors.categoria}</FieldError>
+          ) : null}
+        </div>
+
+        <div>
+          <Label htmlFor="concepto">Concepto</Label>
+          <Input
+            id="concepto"
+            name="concepto"
+            type="text"
+            required
+            defaultValue={state.fields.concepto}
+            aria-invalid={Boolean(state.errors.concepto)}
+            aria-describedby={state.errors.concepto ? "concepto-error" : undefined}
+          />
+          {state.errors.concepto ? (
+            <FieldError id="concepto-error">{state.errors.concepto}</FieldError>
+          ) : null}
+        </div>
+
+        <div>
+          <Label htmlFor="monto">Monto del gasto</Label>
+          <Input
+            id="monto"
+            name="monto"
+            type="number"
+            min="0.01"
+            step="0.01"
+            required
+            defaultValue={state.fields.monto}
+            aria-invalid={Boolean(state.errors.monto)}
+            aria-describedby={state.errors.monto ? "monto-error" : undefined}
+          />
+          {state.errors.monto ? (
+            <FieldError id="monto-error">{state.errors.monto}</FieldError>
+          ) : null}
+        </div>
+
+        <div>
+          <Label htmlFor="fecha_egreso">Fecha de egreso</Label>
+          <DatePickerField
+            key={`fecha-egreso-${state.fields.fecha_egreso}`}
+            id="fecha_egreso"
+            name="fecha_egreso"
+            required
+            defaultValue={state.fields.fecha_egreso}
+            aria-invalid={Boolean(state.errors.fecha_egreso)}
+            aria-describedby={
+              state.errors.fecha_egreso ? "fecha_egreso-error" : undefined
+            }
+          />
+          {state.errors.fecha_egreso ? (
+            <FieldError id="fecha_egreso-error">
+              {state.errors.fecha_egreso}
+            </FieldError>
+          ) : null}
+        </div>
+
+        <div>
+          <Label htmlFor="forma_pago_egreso">Forma de pago</Label>
+          <Select
+            name="forma_pago"
+            defaultValue={formaPagoValue}
+            key={`forma-egreso-${formaPagoValue}`}
+          >
+            <SelectTrigger
+              id="forma_pago_egreso"
+              aria-invalid={Boolean(state.errors.forma_pago)}
+              aria-describedby={
+                state.errors.forma_pago ? "forma_pago_egreso-error" : undefined
+              }
+            >
+              <SelectValue placeholder="Seleccionar forma de pago" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sin_especificar">Sin especificar</SelectItem>
+              {egresoFormaPagoOptions.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {getFormaPagoLabel(option)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {state.errors.forma_pago ? (
+            <FieldError id="forma_pago_egreso-error">
+              {state.errors.forma_pago}
+            </FieldError>
+          ) : null}
+        </div>
+
+        <div>
+          <Label htmlFor="proveedor">Proveedor</Label>
+          <Input
+            id="proveedor"
+            name="proveedor"
+            type="text"
+            defaultValue={state.fields.proveedor}
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <Label htmlFor="notas_egreso">Notas</Label>
+          <Textarea
+            id="notas_egreso"
+            name="notas"
+            rows={3}
+            defaultValue={state.fields.notas}
+          />
+        </div>
+      </div>
+
+      {state.formError ? <FormAlert>{state.formError}</FormAlert> : null}
+      {state.successMessage ? (
+        <FormAlert variant="success">{state.successMessage}</FormAlert>
+      ) : null}
+
+      <div className="flex justify-end">
+        <SubmitButton pendingLabel="Registrando...">Registrar egreso</SubmitButton>
+      </div>
+    </form>
+  );
+}
+
+function getFormaPagoLabel(value: string) {
+  const labels: Record<string, string> = {
+    cheque: "Cheque",
+    efectivo_pesos: "Efectivo pesos",
+    retenciones: "Retenciones",
+    transferencia: "Transferencia",
+  };
+
+  return labels[value] ?? value;
+}

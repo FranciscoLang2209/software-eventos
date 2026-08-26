@@ -15,6 +15,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { getEventoById } from "@/lib/eventos/queries";
 import { getEventoValores } from "@/lib/evento-servicios/queries";
+import { getEventoCaterings } from "@/lib/catering/queries";
 
 type EventoDetallePageProps = {
   params: Promise<{
@@ -30,7 +31,10 @@ export default async function EventoDetallePage({
   const { id } = await params;
   const paramsQuery = searchParams ? await searchParams : {};
   const { evento } = await getEventoById(id);
-  const valores = await getEventoValores(evento.id);
+  const [valores, caterings] = await Promise.all([
+    getEventoValores(evento.id),
+    getEventoCaterings(evento.id),
+  ]);
   const wasCreated = Boolean(paramsQuery.created);
   const wasUpdated = Boolean(paramsQuery.updated);
   const preciosAutocompletados = getSearchParamValue(
@@ -219,6 +223,7 @@ export default async function EventoDetallePage({
 
       <ValoresEventoSection
         catalogo={valores.catalogo}
+        caterings={caterings}
         eventoId={evento.id}
         tieneOrganizador={evento.tiene_organizador}
         monthlyPriceSuggestions={valores.monthlyPriceSuggestions}

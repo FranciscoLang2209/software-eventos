@@ -1,4 +1,4 @@
-export type EventAccessRole = "admin" | "vendedor";
+export type EventAccessRole = "admin" | "vendedor" | "ejecutiva_catering";
 
 export type EventAccessProfile = {
   activo: boolean;

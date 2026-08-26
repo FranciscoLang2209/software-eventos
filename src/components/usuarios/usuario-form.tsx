@@ -115,12 +115,14 @@ export function UsuarioForm({
       );
     }
     if (
-      role === "admin" &&
+      role !== "vendedor" &&
       mode === "edit" &&
       initialState.fields.salonIds.length > 0
     ) {
       warnings.push(
-        "Las asignaciones anteriores se eliminaran porque los administradores tienen acceso global.",
+        role === "admin"
+          ? "Las asignaciones anteriores se eliminaran porque los administradores tienen acceso global."
+          : "Las asignaciones anteriores se eliminaran porque las ejecutivas de catering no se asignan por salon.",
       );
     }
 
@@ -208,6 +210,9 @@ export function UsuarioForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="vendedor">Vendedor</SelectItem>
+                  <SelectItem value="ejecutiva_catering">
+                    Ejecutiva de catering
+                  </SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                 </SelectContent>
               </Select>
@@ -303,6 +308,14 @@ export function UsuarioForm({
             <Alert>
               Los administradores tienen acceso global. Al guardar no se
               mantienen asignaciones de salones para este rol.
+            </Alert>
+          ) : null}
+
+          {role === "ejecutiva_catering" ? (
+            <Alert>
+              Las ejecutivas de catering no se asignan por salon: acceden a
+              cada catering donde figuren como responsable, tenga o no un
+              evento de salon vinculado.
             </Alert>
           ) : null}
 

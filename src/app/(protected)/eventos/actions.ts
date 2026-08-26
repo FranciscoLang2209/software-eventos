@@ -366,12 +366,16 @@ async function validateEventoAccess({
   salonId: string;
   vendedorId: string;
   currentUserId: string;
-  currentUserRole: "admin" | "vendedor";
+  currentUserRole: "admin" | "vendedor" | "ejecutiva_catering";
 }) {
   const salonError = await validateSalonActivo(salonId);
 
   if (salonError) {
     return salonError;
+  }
+
+  if (currentUserRole === "ejecutiva_catering") {
+    return "Tu rol no tiene permiso para gestionar eventos.";
   }
 
   if (currentUserRole === "vendedor" && vendedorId !== currentUserId) {
@@ -400,12 +404,16 @@ async function validateEventoUpdateAccess({
   salonId: string;
   vendedorId?: string;
   currentUserId: string;
-  currentUserRole: "admin" | "vendedor";
+  currentUserRole: "admin" | "vendedor" | "ejecutiva_catering";
 }) {
   const salonError = await validateSalonActivo(salonId);
 
   if (salonError) {
     return salonError;
+  }
+
+  if (currentUserRole === "ejecutiva_catering") {
+    return "Tu rol no tiene permiso para gestionar eventos.";
   }
 
   if (currentUserRole === "vendedor") {

@@ -165,15 +165,19 @@ type ReporteEvento = Pick<
   usuarios: Pick<Tables<"usuarios">, "full_name" | "email"> | null;
 };
 
-type ReportePago = Pick<
-  Tables<"pagos">,
-  "es_garantia" | "evento_id" | "fecha_pago" | "importe_en_pesos"
->;
+// evento_id is nullable at the DB level (catering externo sin evento can
+// have pagos/egresos with evento_id null), but these report rows always
+// come from queries filtered by .in("evento_id", eventoIds), so it's
+// guaranteed non-null here.
+type ReportePago = Omit<
+  Pick<Tables<"pagos">, "es_garantia" | "evento_id" | "fecha_pago" | "importe_en_pesos">,
+  "evento_id"
+> & { evento_id: string };
 
-type ReporteEgreso = Pick<
-  Tables<"egresos">,
-  "categoria" | "evento_id" | "fecha_egreso" | "importe_en_pesos"
->;
+type ReporteEgreso = Omit<
+  Pick<Tables<"egresos">, "categoria" | "evento_id" | "fecha_egreso" | "importe_en_pesos">,
+  "evento_id"
+> & { evento_id: string };
 
 type MovimientoPagoRow = ReportePago & {
   eventos: Pick<

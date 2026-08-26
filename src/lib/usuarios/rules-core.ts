@@ -1,4 +1,4 @@
-export type UserManagementRole = "admin" | "vendedor";
+export type UserManagementRole = "admin" | "vendedor" | "ejecutiva_catering";
 
 export type UserManagementProfile = {
   activo: boolean;
