@@ -85,6 +85,8 @@ test("tolera JSON nulo o con una estructura inesperada", () => {
 
 test("centraliza nombres legibles de entidades y campos", () => {
   assert.equal(getTableLabel("evento_servicios"), "Servicios del evento");
+  assert.equal(getTableLabel("ipc_indices"), "Índices IPC");
   assert.equal(getFieldLabel("fecha_evento"), "Fecha del evento");
+  assert.equal(getFieldLabel("ipc_indice_id"), "Índice IPC");
   assert.equal(getFieldLabel("campo_futuro"), "Campo futuro");
 });

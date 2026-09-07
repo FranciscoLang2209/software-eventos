@@ -46,6 +46,17 @@ test("descarta fechas, acciones y paginas invalidas", () => {
   assert.equal(filters.order, "desc");
 });
 
+test("acepta las entidades auditables de IPC", () => {
+  assert.equal(
+    parseAuditFilters({ tabla: "ipc_indices" }).table,
+    "ipc_indices",
+  );
+  assert.equal(
+    parseAuditFilters({ tabla: "actualizaciones_ipc" }).table,
+    "actualizaciones_ipc",
+  );
+});
+
 test("calcula paginacion real sin superponer resultados", () => {
   assert.deepEqual(getAuditRange(1), { from: 0, to: AUDIT_PAGE_SIZE - 1 });
   assert.deepEqual(getAuditRange(2), {
