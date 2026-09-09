@@ -29,6 +29,11 @@ export default async function AdminPage() {
       name: "Precios de servicios",
     },
     {
+      description: "Aplicacion auditable de ajustes mensuales sobre servicios impagos",
+      href: "/admin/actualizaciones-ipc",
+      name: "Actualizaciones por IPC",
+    },
+    {
       description: "Reservado para administradores",
       href: null,
       name: "Configuracion",

@@ -43,6 +43,7 @@ export type Database = {
           id: string
           indec_mes_ajuste: number | null
           indec_mes_anterior: number | null
+          ipc_indice_id: string | null
           porcentaje_aplicado: number | null
           tipo: Database["public"]["Enums"]["tipo_actualizacion"]
           usuario_id: string | null
@@ -57,6 +58,7 @@ export type Database = {
           id?: string
           indec_mes_ajuste?: number | null
           indec_mes_anterior?: number | null
+          ipc_indice_id?: string | null
           porcentaje_aplicado?: number | null
           tipo?: Database["public"]["Enums"]["tipo_actualizacion"]
           usuario_id?: string | null
@@ -71,6 +73,7 @@ export type Database = {
           id?: string
           indec_mes_ajuste?: number | null
           indec_mes_anterior?: number | null
+          ipc_indice_id?: string | null
           porcentaje_aplicado?: number | null
           tipo?: Database["public"]["Enums"]["tipo_actualizacion"]
           usuario_id?: string | null
@@ -86,7 +89,46 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "actualizaciones_ipc_ipc_indice_id_fkey"
+            columns: ["ipc_indice_id"]
+            isOneToOne: false
+            referencedRelation: "ipc_indices"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "actualizaciones_ipc_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ipc_indices: {
+        Row: {
+          created_at: string
+          id: string
+          periodo: string
+          usuario_id: string
+          variacion_porcentual: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          periodo: string
+          usuario_id: string
+          variacion_porcentual: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          periodo?: string
+          usuario_id?: string
+          variacion_porcentual?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ipc_indices_usuario_id_fkey"
             columns: ["usuario_id"]
             isOneToOne: false
             referencedRelation: "usuarios"
@@ -1180,6 +1222,29 @@ export type Database = {
       }
       current_user_is_active: { Args: never; Returns: boolean }
       current_user_is_active_admin: { Args: never; Returns: boolean }
+      previsualizar_actualizacion_ipc: {
+        Args: { p_periodo: string; p_variacion_porcentual: number }
+        Returns: {
+          cantidad_eventos: number
+          cantidad_servicios: number
+          monto_precio_base_anterior: number
+          monto_precio_base_proyectado: number
+          monto_total_con_iva_anterior: number
+          monto_total_con_iva_proyectado: number
+        }[]
+      }
+      registrar_y_aplicar_ipc: {
+        Args: { p_periodo: string; p_variacion_porcentual: number }
+        Returns: {
+          cantidad_eventos: number
+          cantidad_servicios: number
+          ipc_indice_id: string
+          monto_precio_base_actualizado: number
+          monto_precio_base_anterior: number
+          monto_total_con_iva_actualizado: number
+          monto_total_con_iva_anterior: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       set_usuario_salon_assignments: {
         Args: { p_usuario_id: string; p_salon_ids?: string[] }

@@ -22,6 +22,8 @@ export const AUDITED_TABLES = [
   "salones",
   "servicios_catalogo",
   "servicio_precios_mensuales",
+  "ipc_indices",
+  "actualizaciones_ipc",
 ] as const;
 
 const UUID_PATTERN =
